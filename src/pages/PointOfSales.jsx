@@ -20,6 +20,39 @@ import {
 import SalesHistoryModal from "@/dialogs/SalesHistoryModal";
 import VariantSelectionModal from "@/dialogs/VariantSelectionModal";
 
+const formatStock = (quantity, variants) => {
+  if (!variants || variants.length === 0) {
+    return `${quantity} pieces`;
+  }
+
+  let remaining = quantity;
+  const parts = [];
+
+  const sortedVariants = [...variants].sort(
+    (a, b) => b.units_per_variant - a.units_per_variant
+  );
+
+  for (const variant of sortedVariants) {
+    if (variant.units_per_variant > 1) {
+      const count = Math.floor(remaining / variant.units_per_variant);
+      if (count > 0) {
+        parts.push(`${count} ${variant.unit_type}(s)`);
+        remaining %= variant.units_per_variant;
+      }
+    }
+  }
+
+  if (remaining > 0) {
+    parts.push(`${remaining} piece(s)`);
+  }
+
+  if (parts.length === 0 && quantity === 0) {
+    return "Out of Stock";
+  }
+
+  return parts.length > 0 ? parts.join(", ") : `${quantity} pieces`;
+};
+
 const PointOfSales = ({ branding }) => {
   const [availableMedicines, setAvailableMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -359,13 +392,16 @@ const PointOfSales = ({ branding }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredMedicines.map((med) => {
                   let stockClass = "text-gray-400";
-                  let stockText = `${med.quantity} available`;
+                  let stockText;
+
                   if (med.quantity === 0) {
                     stockClass = "text-red-500 font-medium";
                     stockText = "Out of Stock";
-                  } else if (med.quantity <= 10) {
-                    stockClass = "text-yellow-600 font-medium";
-                    stockText = `${med.quantity} available (Low Stock)`;
+                  } else {
+                    stockText = formatStock(med.quantity, med.product_variants);
+                    if (med.quantity <= 10) {
+                      stockClass = "text-yellow-600 font-medium";
+                    }
                   }
 
                   return (

@@ -12,7 +12,10 @@ export const updateUser = (userData) => supabase.auth.updateUser(userData);
 
 // Products
 export const getProducts = () =>
-  supabase.from("products").select("*").neq("status", "Archived");
+  supabase
+    .from("products")
+    .select("*, product_variants(*)")
+    .neq("status", "Archived");
 
 export const getProductById = (id) =>
   supabase.from("products").select("*").eq("id", id).single();

@@ -25,23 +25,20 @@ const VariantSelectionModal = ({
   const [finalPrice, setFinalPrice] = useState(0);
 
   useEffect(() => {
-    if (!product?.price || !product?.quantity) return;
+    if (!product?.price || product?.quantity === undefined) return;
 
     if (product.product_variants?.length > 0) {
-      // Set default variant (either existing selection or default variant)
       const defaultVariant =
         existingCartItem?.selectedVariant ||
         product.product_variants.find((v) => v.is_default) ||
         product.product_variants[0];
       setSelectedVariant(defaultVariant);
-    } else if (!product.product_variants) {
-      // For products without variants, set final price to product price
+    } else {
       setFinalPrice(product.price);
     }
 
     if (existingCartItem) {
       setQuantity(existingCartItem.quantity);
-      // Calculate existing discount
       const originalPrice =
         existingCartItem.selectedVariant?.unit_price || product.price;
       const currentPrice = existingCartItem.currentPrice;
@@ -50,39 +47,27 @@ const VariantSelectionModal = ({
         setDiscountPercent(discount);
         setDiscountAmount(originalPrice - currentPrice);
       }
+    } else {
+      // Reset to 1 for new items
+      setQuantity(1);
     }
   }, [product, existingCartItem]);
 
   useEffect(() => {
-    if (!product?.price) return;
+    if (product?.price === undefined) return;
 
+    let basePrice = product.price;
     if (selectedVariant) {
-      const basePrice = selectedVariant.unit_price;
-      const discountValue = (basePrice * discountPercent) / 100;
-      setDiscountAmount(discountValue);
-      setFinalPrice(basePrice - discountValue);
-    } else if (!product.product_variants) {
-      // For products without variants, use main product price
-      const basePrice = product.price;
-      const discountValue = (basePrice * discountPercent) / 100;
-      setDiscountAmount(discountValue);
-      setFinalPrice(basePrice - discountValue);
+      basePrice = selectedVariant.unit_price;
     }
+
+    const discountValue = (basePrice * discountPercent) / 100;
+    setDiscountAmount(discountValue);
+    setFinalPrice(basePrice - discountValue);
   }, [selectedVariant, discountPercent, product]);
 
-  const handleQuantityChange = (e) => {
-    if (!product?.quantity) return;
-
-    const newQuantity = parseInt(e.target.value, 10);
-    const maxQuantity = getMaxQuantityForVariant();
-
-    if (!isNaN(newQuantity) && newQuantity > 0 && newQuantity <= maxQuantity) {
-      setQuantity(newQuantity);
-    }
-  };
-
   const getMaxQuantityForVariant = () => {
-    if (!product?.quantity) return 0;
+    if (product?.quantity === undefined) return 0;
 
     const availablePieces = Math.max(
       0,
@@ -90,6 +75,21 @@ const VariantSelectionModal = ({
     );
     const upv = selectedVariant?.units_per_variant || 1;
     return Math.floor(availablePieces / upv);
+  };
+
+  const handleQuantityChange = (e) => {
+    if (product?.quantity === undefined) return;
+
+    const newQuantity = parseInt(e.target.value, 10);
+    const maxQuantity = getMaxQuantityForVariant();
+
+    if (isNaN(newQuantity) || newQuantity < 1) {
+      setQuantity(1);
+    } else if (newQuantity > maxQuantity) {
+      setQuantity(maxQuantity);
+    } else {
+      setQuantity(newQuantity);
+    }
   };
 
   const handleDiscountChange = (e) => {
@@ -100,27 +100,7 @@ const VariantSelectionModal = ({
   };
 
   const handleAddToCart = () => {
-    if (!product?.price) return;
-
-    // For products without variants, use the main product price
-    if (!selectedVariant && !product.product_variants) {
-      const cartItem = {
-        ...product,
-        quantity,
-        selectedVariant: null,
-        currentPrice: finalPrice || product.price,
-        discountPercent,
-        discountAmount,
-        originalPrice: product.price,
-      };
-
-      onAddToCart(cartItem);
-      onClose();
-      return;
-    }
-
-    // For products with variants, require variant selection
-    if (!selectedVariant) return;
+    if (product?.price === undefined) return;
 
     const cartItem = {
       ...product,
@@ -129,7 +109,9 @@ const VariantSelectionModal = ({
       currentPrice: finalPrice,
       discountPercent,
       discountAmount,
-      originalPrice: selectedVariant.unit_price,
+      originalPrice: selectedVariant
+        ? selectedVariant.unit_price
+        : product.price,
     };
 
     onAddToCart(cartItem);
@@ -143,9 +125,8 @@ const VariantSelectionModal = ({
       case "sheet":
         return <FileText size={16} className="text-green-600" />;
       case "piece":
-        return <Circle size={16} className="text-purple-600" />;
       default:
-        return <Circle size={16} className="text-gray-600" />;
+        return <Circle size={16} className="text-purple-600" />;
     }
   };
 
@@ -156,35 +137,31 @@ const VariantSelectionModal = ({
       case "sheet":
         return "Sheet";
       case "piece":
-        return "Piece";
       default:
-        return unitType;
+        return "Piece";
     }
   };
 
   if (!isOpen || !product) return null;
 
-  // Safety check to ensure product has required properties
   if (
     !product.name ||
     product.price === undefined ||
     product.quantity === undefined
   ) {
     console.warn("VariantSelectionModal: Invalid product data", product);
+    onClose(); // Close modal if product data is invalid
     return null;
   }
 
-  // Additional safety check for product properties
-  if (
-    typeof product.price !== "number" ||
-    typeof product.quantity !== "number"
-  ) {
-    console.warn(
-      "VariantSelectionModal: Invalid product price or quantity",
-      product
-    );
-    return null;
-  }
+  const maxQuantityForVariant = getMaxQuantityForVariant();
+  const isAddToCartDisabled =
+    (product.product_variants &&
+      product.product_variants.length > 0 &&
+      !selectedVariant) ||
+    quantity < 1 ||
+    quantity > maxQuantityForVariant ||
+    maxQuantityForVariant < 1;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -208,7 +185,7 @@ const VariantSelectionModal = ({
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-700">
-                Available Stock:
+                Available Stock (Pieces):
               </span>
               <span className="text-lg font-bold text-green-600">
                 {product.quantity}
@@ -241,16 +218,15 @@ const VariantSelectionModal = ({
                       onChange={() => setSelectedVariant(variant)}
                       className="sr-only"
                     />
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full">
                       {getVariantIcon(variant.unit_type)}
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">
                           {getVariantLabel(variant.unit_type)}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {variant.units_per_variant > 1
-                            ? `${variant.units_per_variant} pieces per ${variant.unit_type}`
-                            : "1 piece per unit"}
+                          {variant.units_per_variant} piece(s) per{" "}
+                          {variant.unit_type}
                         </div>
                       </div>
                       <div className="text-right">
@@ -298,34 +274,27 @@ const VariantSelectionModal = ({
               <input
                 type="number"
                 min="1"
-                max={getMaxQuantityForVariant()}
+                max={maxQuantityForVariant}
                 value={quantity}
                 onChange={handleQuantityChange}
                 className="w-20 text-center border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
-                onClick={() => {
-                  const maxQuantity = getMaxQuantityForVariant();
-                  if (quantity < maxQuantity) {
-                    setQuantity(quantity + 1);
-                  }
-                }}
-                disabled={quantity >= getMaxQuantityForVariant()}
+                onClick={() => setQuantity(quantity + 1)}
+                disabled={quantity >= maxQuantityForVariant}
                 className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={16} />
               </button>
             </div>
             <div className="text-sm text-gray-600">
-              Max available: {getMaxQuantityForVariant()}{" "}
-              {selectedVariant ? selectedVariant.unit_type : "units"}
-              {selectedVariant && selectedVariant.units_per_variant > 1 && (
-                <span className="text-gray-400">
-                  {" "}
-                  ({Math.max(0, product.quantity - (reservedPieces || 0))} total
-                  pieces)
-                </span>
-              )}
+              Max available: {maxQuantityForVariant}{" "}
+              {getVariantLabel(selectedVariant?.unit_type || "piece")}
+              <span className="text-gray-400">
+                {" "}
+                ({Math.max(0, product.quantity - (reservedPieces || 0))} total
+                pieces)
+              </span>
             </div>
           </div>
 
@@ -356,8 +325,9 @@ const VariantSelectionModal = ({
                       <span>Original Price:</span>
                       <span>
                         ₱
-                        {selectedVariant?.unit_price?.toFixed(2) ||
-                          product.price?.toFixed(2)}
+                        {(
+                          selectedVariant?.unit_price || product.price
+                        )?.toFixed(2)}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -380,9 +350,7 @@ const VariantSelectionModal = ({
               <div className="flex justify-between text-sm">
                 <span>Unit Price:</span>
                 <span>
-                  ₱
-                  {selectedVariant?.unit_price?.toFixed(2) ||
-                    product.price?.toFixed(2)}
+                  ₱{(selectedVariant?.unit_price || product.price)?.toFixed(2)}
                 </span>
               </div>
               {discountPercent > 0 && (
@@ -415,10 +383,8 @@ const VariantSelectionModal = ({
           </button>
           <button
             onClick={handleAddToCart}
-            disabled={
-              (!selectedVariant && product.product_variants) || quantity < 1
-            }
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 transition-colors"
+            disabled={isAddToCartDisabled}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
           >
             {existingCartItem ? "Update Cart" : "Add to Cart"}
           </button>

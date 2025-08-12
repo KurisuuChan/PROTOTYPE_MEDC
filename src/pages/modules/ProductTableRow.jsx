@@ -2,6 +2,39 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Eye, Pencil } from "lucide-react";
 
+const formatStock = (quantity, variants) => {
+  if (!variants || variants.length === 0) {
+    return `${quantity} pieces`;
+  }
+
+  let remaining = quantity;
+  const parts = [];
+
+  const sortedVariants = [...variants].sort(
+    (a, b) => b.units_per_variant - a.units_per_variant
+  );
+
+  for (const variant of sortedVariants) {
+    if (variant.units_per_variant > 1) {
+      const count = Math.floor(remaining / variant.units_per_variant);
+      if (count > 0) {
+        parts.push(`${count} ${variant.unit_type}(s)`);
+        remaining %= variant.units_per_variant;
+      }
+    }
+  }
+
+  if (remaining > 0) {
+    parts.push(`${remaining} piece(s)`);
+  }
+
+  if (parts.length === 0 && quantity === 0) {
+    return "0";
+  }
+
+  return parts.length > 0 ? parts.join(", ") : `${quantity} pieces`;
+};
+
 const ProductTableRow = ({
   product,
   isSelected,
@@ -70,11 +103,17 @@ const ProductTableRow = ({
           if (product.quantity === 0) qtyClass = "bg-red-100 text-red-700";
           else if (product.quantity <= 10)
             qtyClass = "bg-yellow-100 text-yellow-700";
+
+          const stockText = formatStock(
+            product.quantity,
+            product.product_variants
+          );
+
           return (
             <span
               className={`px-2 py-1 rounded-full text-xs font-semibold ${qtyClass}`}
             >
-              {product.quantity}
+              {stockText}
             </span>
           );
         })()}
