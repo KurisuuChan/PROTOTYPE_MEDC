@@ -51,7 +51,7 @@ NotificationItem.propTypes = {
 };
 
 const NotificationHistory = () => {
-  const { notifications, loading, groupedByDate, markAsRead } =
+  const { allNotifications, loading, groupedByDate, markAsRead } =
     useNotifications();
 
   const renderContent = () => {
@@ -62,7 +62,7 @@ const NotificationHistory = () => {
         </div>
       );
     }
-    if (notifications.length === 0) {
+    if (allNotifications.length === 0) {
       return (
         <div className="text-center py-20 text-gray-500">
           <Bell size={48} className="mx-auto mb-4" />

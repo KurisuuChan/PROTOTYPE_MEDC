@@ -97,9 +97,7 @@ const NotificationSettings = () => {
           >
             Save settings
           </button>
-          {saved && (
-            <span className="ml-3 text-green-600 text-sm">Saved</span>
-          )}
+          {saved && <span className="ml-3 text-green-600 text-sm">Saved</span>}
         </div>
       </div>
     </div>

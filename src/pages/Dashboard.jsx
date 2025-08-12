@@ -149,7 +149,8 @@ const Dashboard = () => {
       });
       setMonthlyProgressData(generatedMonthlyProgress);
 
-      const { data: saleItems, error: saleItemsError } = await api.getAllSaleItems();
+      const { data: saleItems, error: saleItemsError } =
+        await api.getAllSaleItems();
 
       if (saleItemsError) throw saleItemsError;
 
@@ -177,7 +178,8 @@ const Dashboard = () => {
         .map(([name, quantity]) => ({ name, quantity }));
       setBestSellers(sortedBestSellers);
 
-      const { data: recentSalesData, error: recentSalesError } = await api.getRecentSaleItems();
+      const { data: recentSalesData, error: recentSalesError } =
+        await api.getRecentSaleItems();
 
       if (recentSalesError) throw recentSalesError;
       setRecentSales(recentSalesData);

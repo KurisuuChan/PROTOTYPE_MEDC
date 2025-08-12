@@ -5,6 +5,10 @@ html {
   text-size-adjust: 100%;
 }
 
+body {
+  background-color: #f8fafc; /* A very light gray for a subtle texture */
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

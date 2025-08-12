@@ -27,7 +27,7 @@ const Sidebar = ({ branding }) => {
 
   return (
     <aside
-      className={`h-full bg-white border-r border-gray-200 text-gray-800 transition-all duration-500 ease-in-out ${
+      className={`h-full bg-white border-r border-gray-200 text-gray-800 transition-all duration-300 ease-in-out ${
         expanded ? "w-64" : "w-20"
       }`}
     >
@@ -35,7 +35,7 @@ const Sidebar = ({ branding }) => {
         {expanded && <Logo branding={branding} />}
         <button
           onClick={() => setExpanded((curr) => !curr)}
-          className="p-2 rounded-lg hover:bg-gray-200"
+          className="p-2 rounded-lg hover:bg-gray-100"
         >
           {expanded ? <ChevronsLeft /> : <Menu />}
         </button>
@@ -49,7 +49,7 @@ const Sidebar = ({ branding }) => {
                 to={item.path}
                 className={`w-full flex items-center p-3 rounded-lg transition-all duration-300 ease-in-out ${
                   location.pathname === item.path
-                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg"
+                    ? "bg-blue-600 text-white shadow-lg"
                     : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
@@ -63,7 +63,7 @@ const Sidebar = ({ branding }) => {
                   {item.icon}
                 </span>
                 <span
-                  className={`overflow-hidden whitespace-nowrap transition-all duration-500 ease-in-out font-medium ${
+                  className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out font-medium ${
                     expanded ? "w-36 ml-3" : "w-0"
                   }`}
                 >

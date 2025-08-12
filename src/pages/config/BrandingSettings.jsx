@@ -29,7 +29,11 @@ const BrandingSettings = ({ onUpdate }) => {
 
     setUploading(true);
     const fileName = `public/${Date.now()}`;
-    const { error: uploadError } = await api.uploadFile("logos", fileName, file);
+    const { error: uploadError } = await api.uploadFile(
+      "logos",
+      fileName,
+      file
+    );
 
     if (uploadError) {
       alert("Error uploading logo: " + uploadError.message);
@@ -45,7 +49,10 @@ const BrandingSettings = ({ onUpdate }) => {
 
   const handleSaveChanges = async (e) => {
     e.preventDefault();
-    const { error } = await api.updateBranding({ name: logoName, logo_url: logoUrl });
+    const { error } = await api.updateBranding({
+      name: logoName,
+      logo_url: logoUrl,
+    });
 
     if (error) {
       alert("Error updating branding: " + error.message);

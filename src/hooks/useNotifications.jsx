@@ -3,14 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/supabase/client";
 import {
   getDismissedNotificationIds,
-  getLowStockTimestamps,
   getNotificationSettings,
   getReadNotificationIds,
   getSystemNotifications,
   removeSystemNotification,
   setDismissedNotificationIds,
-  setLowStockTimestamps,
   setReadNotificationIds,
+  getLowStockTimestamps, // Re-add this import
+  setLowStockTimestamps, // Re-add this import
 } from "@/utils/notificationStorage";
 
 /**
@@ -19,6 +19,7 @@ import {
  */
 export default function useNotifications() {
   const [notifications, setNotifications] = useState([]);
+  const [allNotifications, setAllNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
@@ -36,8 +37,8 @@ export default function useNotifications() {
 
     const readIds = getReadNotificationIds();
     const dismissedIds = getDismissedNotificationIds();
-    const lowStockTimestamps = getLowStockTimestamps();
     const settings = getNotificationSettings();
+    const lowStockTimestamps = getLowStockTimestamps(); // Get stored timestamps
     let newTimestamps = { ...lowStockTimestamps };
     let timestampsUpdated = false;
 
@@ -58,74 +59,74 @@ export default function useNotifications() {
         createdAt: new Date(s.createdAt),
       }));
 
-    // Include stored system notifications first
     const systemNotifications = getSystemNotifications();
     generated.push(...buildSystemNotifications(systemNotifications, readIds));
 
     const pushExpiryNotifications = (product) => {
-      const expiredId = `expired-${product.id}`;
-      const expiryDate = new Date(product.expireDate);
-      if (product.expireDate && expiryDate < today) {
-        generated.push({
-          id: expiredId,
-          iconType: "expired",
-          iconBg: "bg-red-100",
-          title: "Expired Medicine Alert",
-          category: "Expired",
-          description: `${product.name} (ID: ${product.id}) has expired.`,
-          read: readIds.includes(expiredId),
-          path: `/management?highlight=${product.id}`,
-          createdAt: expiryDate,
-        });
-      }
+      if (product.expireDate) {
+        const expiryDate = new Date(product.expireDate);
+        const expiredId = `expired-${product.id}`;
 
-      if (settings.enableExpiringSoon && product.expireDate) {
-        const diffMs = expiryDate - today;
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        if (diffDays > 0 && diffDays <= Number(settings.expiringSoonDays)) {
-          const expSoonId = `exp-soon-${product.id}`;
+        if (expiryDate < today) {
           generated.push({
-            id: expSoonId,
-            iconType: "expiringSoon",
-            iconBg: "bg-orange-100",
-            title: "Expiring Soon",
-            category: "Expiring Soon",
-            description: `${product.name} expires in ${diffDays} day(s).`,
-            read: readIds.includes(expSoonId),
+            id: expiredId,
+            iconType: "expired",
+            iconBg: "bg-red-100",
+            title: "Expired Medicine Alert",
+            category: "Expired",
+            description: `${product.name} (ID: ${product.id}) has expired.`,
+            read: readIds.includes(expiredId),
             path: `/management?highlight=${product.id}`,
             createdAt: expiryDate,
           });
         }
+
+        if (settings.enableExpiringSoon) {
+          const diffMs = expiryDate - today;
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays > 0 && diffDays <= Number(settings.expiringSoonDays)) {
+            const expSoonId = `exp-soon-${product.id}`;
+            generated.push({
+              id: expSoonId,
+              iconType: "expiringSoon",
+              iconBg: "bg-orange-100",
+              title: "Expiring Soon",
+              category: "Expiring Soon",
+              description: `${product.name} expires in ${diffDays} day(s).`,
+              read: readIds.includes(expSoonId),
+              path: `/management?highlight=${product.id}`,
+              createdAt: expiryDate,
+            });
+          }
+        }
       }
     };
 
-    const buildStockNotifications = (
-      product,
-      lowThreshold,
-      readIdsLocal,
-      timestamps
-    ) => {
+    const buildStockNotifications = (product, lowThreshold, readIdsLocal) => {
       const notes = [];
-      let timestampsChanged = false;
-      const baseLowStockId = `low-${product.id}`;
+      const lowStockId = `low-${product.id}`;
+      const noStockId = `no-stock-${product.id}`;
 
-      if (product.quantity > lowThreshold && timestamps[baseLowStockId]) {
-        delete timestamps[baseLowStockId];
-        timestampsChanged = true;
-      }
-      if (product.quantity === 0 && timestamps[baseLowStockId]) {
-        delete timestamps[baseLowStockId];
-        timestampsChanged = true;
-      }
-
-      if (product.quantity <= lowThreshold && product.quantity > 0) {
-        let timestamp = timestamps[baseLowStockId];
-        if (!timestamp) {
-          timestamp = new Date().toISOString();
-          timestamps[baseLowStockId] = timestamp;
-          timestampsChanged = true;
+      // Clear timestamps when stock is replenished
+      if (product.quantity > lowThreshold) {
+        if (newTimestamps[lowStockId]) {
+          delete newTimestamps[lowStockId];
+          timestampsUpdated = true;
         }
-        const lowStockId = `${baseLowStockId}-${timestamp}`;
+      }
+      if (product.quantity > 0) {
+        if (newTimestamps[noStockId]) {
+          delete newTimestamps[noStockId];
+          timestampsUpdated = true;
+        }
+      }
+
+      // Low stock notification
+      if (product.quantity <= lowThreshold && product.quantity > 0) {
+        if (!newTimestamps[lowStockId]) {
+          newTimestamps[lowStockId] = new Date().toISOString();
+          timestampsUpdated = true;
+        }
         notes.push({
           id: lowStockId,
           iconType: "lowStock",
@@ -135,12 +136,16 @@ export default function useNotifications() {
           description: `${product.name} has only ${product.quantity} items left.`,
           read: readIdsLocal.includes(lowStockId),
           path: `/management?highlight=${product.id}`,
-          createdAt: new Date(timestamp),
+          createdAt: new Date(newTimestamps[lowStockId]),
         });
       }
 
+      // Out of stock notification
       if (product.quantity === 0) {
-        const noStockId = `no-stock-${product.id}`;
+        if (!newTimestamps[noStockId]) {
+          newTimestamps[noStockId] = new Date().toISOString();
+          timestampsUpdated = true;
+        }
         notes.push({
           id: noStockId,
           iconType: "noStock",
@@ -150,42 +155,35 @@ export default function useNotifications() {
           description: `${product.name} is out of stock.`,
           read: readIdsLocal.includes(noStockId),
           path: `/management?highlight=${product.id}`,
-          createdAt: new Date(),
+          createdAt: new Date(newTimestamps[noStockId]),
         });
       }
-
-      return {
-        notifications: notes,
-        updatedTimestamps: timestamps,
-        timestampsChanged,
-      };
+      return notes;
     };
 
     products.forEach((product) => {
-      const {
-        notifications: stockNotes,
-        updatedTimestamps,
-        timestampsChanged,
-      } = buildStockNotifications(
+      const stockNotes = buildStockNotifications(
         product,
         lowStockThreshold,
-        readIds,
-        newTimestamps
+        readIds
       );
-      newTimestamps = updatedTimestamps;
-      if (timestampsChanged) timestampsUpdated = true;
       generated.push(...stockNotes);
       pushExpiryNotifications(product);
     });
 
+    // Save updated timestamps to localStorage if changed
     if (timestampsUpdated) {
       setLowStockTimestamps(newTimestamps);
     }
 
-    generated = generated.filter((n) => !dismissedIds.includes(n.id));
-    generated.sort((a, b) => b.createdAt - a.createdAt);
+    generated.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    setAllNotifications(generated);
 
-    setNotifications(generated);
+    const activeNotifications = generated.filter(
+      (n) => !dismissedIds.includes(n.id)
+    );
+    setNotifications(activeNotifications);
+
     setLoading(false);
   }, []);
 
@@ -242,7 +240,7 @@ export default function useNotifications() {
 
   const groupedByDate = useMemo(() => {
     const groups = {};
-    notifications.forEach((n) => {
+    allNotifications.forEach((n) => {
       const dateKey = new Date(n.createdAt).toLocaleDateString(undefined, {
         year: "numeric",
         month: "long",
@@ -254,7 +252,7 @@ export default function useNotifications() {
       groups[dateKey].push(n);
     });
     return Object.entries(groups).map(([date, items]) => ({ date, items }));
-  }, [notifications]);
+  }, [allNotifications]);
 
   const dismiss = useCallback(
     (notificationId) => {
@@ -276,6 +274,9 @@ export default function useNotifications() {
         setReadNotificationIds([...readIds, notificationId]);
       }
       setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      );
+      setAllNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
       const target = notifications.find((x) => x.id === notificationId);
@@ -302,6 +303,7 @@ export default function useNotifications() {
 
   return {
     notifications,
+    allNotifications,
     loading,
     unreadCount,
     categories,
