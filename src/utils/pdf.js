@@ -231,7 +231,7 @@ export const generateProductPDF = async (products, brandingData) => {
       startY: summaryFinalY + 5,
       theme: "grid",
       headStyles: { fillColor: [22, 160, 133], textColor: 255 },
-      styles: { fontSize: 9, cellPadding: 2 },
+      styles: { fontSize: 8, cellPadding: 2 },
       columnStyles: {
         0: { cellWidth: 25 }, // ID
         1: { cellWidth: 45 }, // Name

@@ -39,7 +39,9 @@ const Archived = () => {
   }, []);
 
   const handleUnarchive = async (productId) => {
-    const { error } = await api.updateProduct(productId, { status: "Available" });
+    const { error } = await api.updateProduct(productId, {
+      status: "Available",
+    });
 
     if (error) {
       addNotification(`Error: ${error.message}`, "error");

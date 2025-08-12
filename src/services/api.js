@@ -17,6 +17,12 @@ export const getProducts = () =>
     .select("*, product_variants(*)")
     .neq("status", "Archived");
 
+export const getArchivedProducts = () =>
+  supabase
+    .from("products")
+    .select("*, product_variants(*)")
+    .eq("status", "Archived");
+
 export const getProductById = (id) =>
   supabase.from("products").select("*").eq("id", id).single();
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, Suspense, lazy } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -20,12 +20,24 @@ function App() {
     name: "MedCure",
     url: defaultLogo,
   });
+  const navigate = useNavigate();
 
-  const fetchSessionAndBranding = async () => {
+  const fetchSessionAndBranding = useCallback(async () => {
     try {
       const {
         data: { session },
+        error: sessionError,
       } = await api.getSession();
+
+      if (sessionError) {
+        console.error("Error fetching session:", sessionError);
+        setIsLoggedIn(false);
+        setUser(null);
+        await api.signOut();
+        navigate("/login");
+        return;
+      }
+
       setIsLoggedIn(!!session);
       setUser(session?.user ?? null);
 
@@ -38,7 +50,7 @@ function App() {
     } finally {
       setAuthLoading(false);
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     fetchSessionAndBranding();
@@ -52,7 +64,7 @@ function App() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchSessionAndBranding]);
 
   const handleLogin = () => {
     fetchSessionAndBranding();
@@ -81,44 +93,46 @@ function App() {
       }
     >
       <Routes>
-      {isLoggedIn ? (
-        <Route
-          path="/*"
-          element={
-            <div className="flex h-screen bg-gray-200">
-              <Sidebar branding={branding} />
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <Header handleLogout={handleLogout} user={user} />
-                <main className="flex-1 p-6 overflow-auto bg-gradient-to-br from-white to-gray-100">
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/management" element={<Management />} />
-                    <Route path="/archived" element={<Archived />} />
-                    <Route
-                      path="/point-of-sales"
-                      element={<PointOfSales branding={branding} />}
-                    />
-                    <Route path="/contacts" element={<Contacts />} />
-                    <Route
-                      path="/settings"
-                      element={<Settings onUpdate={fetchSessionAndBranding} />}
-                    />
-                    <Route path="*" element={<Navigate to="/" />} />
-                  </Routes>
-                </main>
-              </div>
-            </div>
-          }
-        />
-      ) : (
-        <>
+        {isLoggedIn ? (
           <Route
-            path="/login"
-            element={<LoginPage onLogin={handleLogin} branding={branding} />}
+            path="/*"
+            element={
+              <div className="flex h-screen bg-gray-200">
+                <Sidebar branding={branding} />
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  <Header handleLogout={handleLogout} user={user} />
+                  <main className="flex-1 p-6 overflow-auto bg-gradient-to-br from-white to-gray-100">
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/management" element={<Management />} />
+                      <Route path="/archived" element={<Archived />} />
+                      <Route
+                        path="/point-of-sales"
+                        element={<PointOfSales branding={branding} />}
+                      />
+                      <Route path="/contacts" element={<Contacts />} />
+                      <Route
+                        path="/settings"
+                        element={
+                          <Settings onUpdate={fetchSessionAndBranding} />
+                        }
+                      />
+                      <Route path="*" element={<Navigate to="/" />} />
+                    </Routes>
+                  </main>
+                </div>
+              </div>
+            }
           />
-          <Route path="*" element={<Navigate to="/login" />} />
-        </>
-      )}
+        ) : (
+          <>
+            <Route
+              path="/login"
+              element={<LoginPage onLogin={handleLogin} branding={branding} />}
+            />
+            <Route path="*" element={<Navigate to="/login" />} />
+          </>
+        )}
       </Routes>
     </Suspense>
   );
