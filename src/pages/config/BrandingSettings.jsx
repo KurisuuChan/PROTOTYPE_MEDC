@@ -1,66 +1,17 @@
-import React, { useState, useEffect } from "react";
+// src/pages/config/BrandingSettings.jsx
+import React from "react";
 import PropTypes from "prop-types";
-import * as api from "@/services/api";
+import { useBrandingSettings } from "@/hooks/useBrandingSettings";
 
 const BrandingSettings = ({ onUpdate }) => {
-  const [logoName, setLogoName] = useState("");
-  const [logoUrl, setLogoUrl] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    const fetchBranding = async () => {
-      const { data, error } = await api.getBranding();
-
-      if (data) {
-        setLogoName(data.name);
-        setLogoUrl(data.logo_url);
-      } else {
-        console.error("Error fetching branding:", error);
-      }
-      setLoading(false);
-    };
-    fetchBranding();
-  }, []);
-
-  const handleLogoUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setUploading(true);
-    const fileName = `public/${Date.now()}`;
-    const { error: uploadError } = await api.uploadFile(
-      "logos",
-      fileName,
-      file
-    );
-
-    if (uploadError) {
-      alert("Error uploading logo: " + uploadError.message);
-      setUploading(false);
-      return;
-    }
-
-    const { data } = api.getPublicUrl("logos", fileName);
-
-    setLogoUrl(data.publicUrl);
-    setUploading(false);
-  };
-
-  const handleSaveChanges = async (e) => {
-    e.preventDefault();
-    const { error } = await api.updateBranding({
-      name: logoName,
-      logo_url: logoUrl,
-    });
-
-    if (error) {
-      alert("Error updating branding: " + error.message);
-    } else {
-      alert("Branding updated successfully!");
-      onUpdate();
-    }
-  };
+  const {
+    brandingData,
+    loading,
+    uploading,
+    handleLogoUpload,
+    handleSaveChanges,
+    setLogoName,
+  } = useBrandingSettings(onUpdate);
 
   if (loading) return <div>Loading branding settings...</div>;
 
@@ -76,7 +27,8 @@ const BrandingSettings = ({ onUpdate }) => {
         <div className="flex items-center gap-6">
           <img
             src={
-              logoUrl || "https://placehold.co/100x100/E2E8F0/4A5568?text=Logo"
+              brandingData.logoUrl ||
+              "https://placehold.co/100x100/E2E8F0/4A5568?text=Logo"
             }
             alt="Current Logo"
             className="w-24 h-24 rounded-lg object-cover bg-gray-100"
@@ -109,7 +61,7 @@ const BrandingSettings = ({ onUpdate }) => {
               type="text"
               id="brand-name"
               name="brand-name"
-              value={logoName}
+              value={brandingData.logoName}
               onChange={(e) => setLogoName(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />

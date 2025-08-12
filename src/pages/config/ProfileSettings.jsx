@@ -1,85 +1,18 @@
-import React, { useState, useEffect } from "react";
+// src/pages/config/ProfileSettings.jsx
+import React from "react";
 import PropTypes from "prop-types";
-import * as api from "@/services/api";
+import { useProfileSettings } from "@/hooks/useProfileSettings";
 
 const ProfileSettings = ({ onUpdate }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState(null);
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data } = await api.getUser();
-      const user = data?.user;
-      if (user) {
-        setUser(user);
-        setFullName(user.user_metadata.full_name || "");
-        setRole(user.user_metadata.role || "");
-        setEmail(user.email);
-        setPhone(user.user_metadata.phone || "");
-        setAvatarUrl(user.user_metadata.avatar_url);
-      }
-      setLoading(false);
-    };
-
-    fetchUser();
-  }, []);
-
-  const handleSaveChanges = async (e) => {
-    e.preventDefault();
-    const { error } = await api.updateUser({
-      email: email,
-      data: {
-        full_name: fullName,
-        role: role,
-        phone: phone,
-        avatar_url: avatarUrl,
-      },
-    });
-
-    if (error) {
-      alert("Error updating the user: " + error.message);
-    } else {
-      alert("Profile updated successfully!");
-      onUpdate();
-    }
-  };
-
-  const handlePhotoChange = async (event) => {
-    const file = event.target.files[0];
-    if (!file || !user) return;
-
-    setUploading(true);
-
-    const fileName = `${user.id}/${Date.now()}`;
-    const { error: uploadError } = await api.uploadFile("avatars", fileName, file);
-
-    if (uploadError) {
-      alert("Error uploading file: " + uploadError.message);
-      setUploading(false);
-      return;
-    }
-
-    const { data } = api.getPublicUrl("avatars", fileName);
-
-    const publicUrl = data.publicUrl;
-    setAvatarUrl(publicUrl);
-
-    const { error: updateUserError } = await api.updateUser({ data: { avatar_url: publicUrl } });
-
-    if (updateUserError) {
-      alert("Error updating user photo: " + updateUserError.message);
-    } else {
-      onUpdate();
-    }
-
-    setUploading(false);
-  };
+  const {
+    user,
+    loading,
+    profileData,
+    uploading,
+    handleProfileChange,
+    handleSaveChanges,
+    handlePhotoChange,
+  } = useProfileSettings(onUpdate);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -96,7 +29,9 @@ const ProfileSettings = ({ onUpdate }) => {
       <form className="space-y-6" onSubmit={handleSaveChanges}>
         <div className="flex items-center gap-6">
           <img
-            src={avatarUrl || `https://i.pravatar.cc/150?u=${user?.id}`}
+            src={
+              profileData.avatarUrl || `https://i.pravatar.cc/150?u=${user?.id}`
+            }
             alt="Admin"
             className="w-24 h-24 rounded-full object-cover"
           />
@@ -127,9 +62,9 @@ const ProfileSettings = ({ onUpdate }) => {
             <input
               type="text"
               id="full-name"
-              name="full-name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              name="fullName"
+              value={profileData.fullName}
+              onChange={handleProfileChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </label>
@@ -139,8 +74,8 @@ const ProfileSettings = ({ onUpdate }) => {
               type="text"
               id="role"
               name="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
+              value={profileData.role}
+              onChange={handleProfileChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </label>
@@ -150,8 +85,8 @@ const ProfileSettings = ({ onUpdate }) => {
               type="email"
               id="email"
               name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={profileData.email}
+              onChange={handleProfileChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </label>
@@ -161,8 +96,8 @@ const ProfileSettings = ({ onUpdate }) => {
               type="tel"
               id="phone"
               name="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              value={profileData.phone}
+              onChange={handleProfileChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </label>

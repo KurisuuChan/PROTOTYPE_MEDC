@@ -1,40 +1,16 @@
-import React, { useState } from "react";
-import * as api from "@/services/api";
+// src/pages/config/SecuritySettings.jsx
+import React from "react";
+import { useUpdatePassword } from "@/hooks/useUpdatePassword";
 
 const SecuritySettings = () => {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleUpdatePassword = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (newPassword.length < 6) {
-      setError("Password should be at least 6 characters long.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    setLoading(true);
-    const { error: updateError } = await api.updateUser({ password: newPassword });
-
-    if (updateError) {
-      setError(updateError.message);
-    } else {
-      setSuccess("Password updated successfully!");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setLoading(false);
-  };
+  const {
+    passwordData,
+    error,
+    success,
+    loading,
+    handlePasswordChange,
+    handleUpdatePassword,
+  } = useUpdatePassword();
 
   return (
     <div>
@@ -50,20 +26,20 @@ const SecuritySettings = () => {
               <input
                 type="password"
                 id="new-password"
-                name="new-password"
+                name="newPassword"
                 placeholder="New Password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
                 className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               />
               <input
                 type="password"
                 id="confirm-password"
-                name="confirm-password"
+                name="confirmPassword"
                 placeholder="Confirm New Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                value={passwordData.confirmPassword}
+                onChange={handlePasswordChange}
                 className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               />
