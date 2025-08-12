@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { supabase } from "@/supabase/client";
 import { Loader, CheckCircle, XCircle } from "lucide-react";
-import { generateProductPDF } from "@/utils/pdfUtils"; // Updated import path
+import { generateProductPDF } from "@/utils/pdf";
 
 const ExportPDFModal = ({ isOpen, onClose, allProducts }) => {
   const [status, setStatus] = useState("generating");

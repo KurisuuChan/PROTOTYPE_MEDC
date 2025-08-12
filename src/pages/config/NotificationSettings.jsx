@@ -62,7 +62,10 @@ const NotificationSettings = () => {
               selected window.
             </p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label
+            aria-label="Enable expiring soon alerts"
+            className="relative inline-flex items-center cursor-pointer"
+          >
             <input
               type="checkbox"
               className="sr-only peer"
