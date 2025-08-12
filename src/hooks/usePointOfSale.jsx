@@ -1,3 +1,4 @@
+// src/hooks/usePointOfSale.jsx
 import { useState, useEffect, useMemo, useCallback } from "react";
 import * as api from "@/services/api";
 import { useNotification } from "@/hooks/useNotification";
@@ -40,34 +41,39 @@ export const usePointOfSale = () => {
   };
 
   const handleSelectProduct = (product) => {
-    const isInCart = cart.some((item) => item.id === product.id);
-    if (isInCart) {
-      setEditingCartItem(cart.find((item) => item.id === product.id));
-    } else {
-      setEditingCartItem(null);
-    }
+    const existingItem = cart.find(
+      (item) => item.id === product.id && !item.selectedVariant // handles products w/o variants
+    );
+    setEditingCartItem(existingItem || null);
     setSelectedProduct(product);
     setIsVariantModalOpen(true);
   };
 
   const handleAddToCart = (productToAdd) => {
     setCart((prevCart) => {
+      const uniqueId = productToAdd.selectedVariant
+        ? `${productToAdd.id}-${productToAdd.selectedVariant.id}`
+        : productToAdd.id.toString();
+
       const existingItemIndex = prevCart.findIndex(
-        (item) => item.id === productToAdd.id
+        (item) => item.uniqueId === uniqueId
       );
+
       if (existingItemIndex > -1) {
         const updatedCart = [...prevCart];
-        updatedCart[existingItemIndex] = productToAdd;
+        updatedCart[existingItemIndex] = {
+          ...productToAdd,
+          uniqueId,
+        };
         return updatedCart;
       }
-      return [...prevCart, productToAdd];
+      return [...prevCart, { ...productToAdd, uniqueId }];
     });
   };
 
   const getReservedPieces = (productId, variantIdToExclude) => {
     return cart.reduce((total, item) => {
       if (item.id === productId) {
-        // If we are editing an item, don't count its own reserved pieces
         if (
           editingCartItem &&
           item.selectedVariant?.id === variantIdToExclude
@@ -82,13 +88,13 @@ export const usePointOfSale = () => {
     }, 0);
   };
 
-  const updateCartQuantity = (productId, newQuantity) => {
+  const updateCartQuantity = (uniqueId, newQuantity) => {
     setCart((prevCart) => {
       if (newQuantity <= 0) {
-        return prevCart.filter((item) => item.id !== productId);
+        return prevCart.filter((item) => item.uniqueId !== uniqueId);
       }
       return prevCart.map((item) =>
-        item.id === productId ? { ...item, quantity: newQuantity } : item
+        item.uniqueId === uniqueId ? { ...item, quantity: newQuantity } : item
       );
     });
   };

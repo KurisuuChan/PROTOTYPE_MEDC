@@ -1,8 +1,148 @@
+// src/dialogs/SalesHistoryModal.jsx
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { X, Printer, Loader2 } from "lucide-react";
+import {
+  X,
+  Printer,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Hash,
+  Calendar,
+  ShoppingCart,
+  Tag,
+  Receipt,
+} from "lucide-react";
 import { generateReceiptPDF } from "@/utils/pdf";
 import * as api from "@/services/api";
+
+const SaleDetailRow = ({ label, value, icon }) => (
+  <div className="flex items-center gap-2 text-sm">
+    <div className="text-gray-500">{icon}</div>
+    <span className="font-medium text-gray-600">{label}:</span>
+    <span className="text-gray-800 font-semibold">{value}</span>
+  </div>
+);
+
+SaleDetailRow.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.string.isRequired,
+  icon: PropTypes.node.isRequired,
+};
+
+const SaleCard = ({ sale, onPrint }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const totalItems = sale.sale_items.reduce(
+    (acc, item) => acc + item.quantity,
+    0
+  );
+
+  return (
+    <div className="border border-gray-200 rounded-xl bg-white transition-all duration-300 hover:shadow-lg hover:border-blue-400">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between p-4 text-left"
+        onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
+        aria-controls={`sale-details-${sale.id}`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center sm:gap-6">
+          <SaleDetailRow
+            label="Sale ID"
+            value={sale.id.toString()}
+            icon={<Hash size={14} />}
+          />
+          <SaleDetailRow
+            label="Date"
+            value={new Date(sale.created_at).toLocaleDateString()}
+            icon={<Calendar size={14} />}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="font-bold text-lg text-blue-600">
+            ₱{sale.total_amount.toFixed(2)}
+          </span>
+          {isExpanded ? (
+            <ChevronUp size={20} className="text-gray-500" />
+          ) : (
+            <ChevronDown size={20} className="text-gray-500" />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div
+          id={`sale-details-${sale.id}`}
+          className="border-t border-gray-200 p-4 bg-gray-50"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <SaleDetailRow
+              label="Time"
+              value={new Date(sale.created_at).toLocaleTimeString()}
+              icon={<Calendar size={14} />}
+            />
+            <SaleDetailRow
+              label="Total Items"
+              value={totalItems.toString()}
+              icon={<ShoppingCart size={14} />}
+            />
+            <SaleDetailRow
+              label="Discount Applied"
+              value={sale.discount_applied ? "Yes" : "No"}
+              icon={<Tag size={14} />}
+            />
+          </div>
+          <div className="space-y-2">
+            <h4 className="font-semibold text-gray-700">Items Sold</h4>
+            <ul className="divide-y divide-gray-200">
+              {sale.sale_items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex justify-between items-center py-2"
+                >
+                  <div>
+                    <span className="font-medium text-gray-800">
+                      {item.products?.name || "Unknown Product"}
+                    </span>
+                    <span className="text-gray-500 text-sm">
+                      {" "}
+                      (
+                      {item.product_variants?.unit_type ||
+                        "unit".toLocaleLowerCase()}
+                      )
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-800">
+                      {item.quantity} x ₱{item.price_at_sale.toFixed(2)}
+                    </p>
+                    <p className="font-bold text-gray-900">
+                      ₱{(item.quantity * item.price_at_sale).toFixed(2)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-4 text-right">
+            <button
+              onClick={() => onPrint(sale)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm font-medium transition-colors"
+            >
+              <Printer size={16} />
+              Print Receipt
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+SaleCard.propTypes = {
+  sale: PropTypes.object.isRequired,
+  onPrint: PropTypes.func.isRequired,
+};
 
 const SalesHistoryModal = ({ isOpen, onClose, branding }) => {
   const [sales, setSales] = useState([]);
@@ -17,7 +157,7 @@ const SalesHistoryModal = ({ isOpen, onClose, branding }) => {
         if (error) {
           console.error("Error fetching sales history:", error);
         } else {
-          setSales(data);
+          setSales(data || []);
         }
         setLoading(false);
       };
@@ -40,104 +180,54 @@ const SalesHistoryModal = ({ isOpen, onClose, branding }) => {
 
     if (sales.length === 0) {
       return (
-        <p className="text-center text-gray-500">No sales history found.</p>
+        <div className="text-center py-20 text-gray-500">
+          <Receipt size={48} className="mx-auto mb-4" />
+          <h2 className="text-2xl font-semibold">No Sales Recorded</h2>
+          <p className="text-md">
+            When a sale is completed, it will appear here.
+          </p>
+        </div>
       );
     }
 
     return (
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50 sticky top-0">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Sale ID
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Products
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Variants
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Time
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Total Amount
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Discount
-            </th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {sales.map((sale) => (
-            <tr key={sale.id}>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                {sale.id}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {sale.sale_items
-                  .map((item) => item.products?.name || "Unknown Product")
-                  .join(", ")}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {sale.sale_items
-                  .map((item) => {
-                    if (item.product_variants) {
-                      return `${item.quantity} ${item.product_variants.unit_type} @ ₱${item.price_at_sale}`;
-                    } else {
-                      return `${item.quantity} units @ ₱${item.price_at_sale}`;
-                    }
-                  })
-                  .join(", ")}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {new Date(sale.created_at).toLocaleDateString()}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {new Date(sale.created_at).toLocaleTimeString()}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ₱{sale.total_amount.toFixed(2)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {sale.discount_applied ? "Yes" : "No"}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                <button
-                  onClick={() => handlePrintReceipt(sale)}
-                  className="text-blue-600 hover:text-blue-900 flex items-center gap-1 mx-auto"
-                >
-                  <Printer size={16} /> Print Receipt
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="space-y-4">
+        {sales.map((sale) => (
+          <SaleCard key={sale.id} sale={sale} onPrint={handlePrintReceipt} />
+        ))}
+      </div>
     );
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
-      <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Sales History</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
-          >
-            <X size={20} />
-          </button>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-50 p-6 rounded-2xl shadow-2xl w-full max-w-3xl h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b bg-gray-50 sticky top-0">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Sales History</h2>
+            <p className="text-sm text-gray-500">
+              A log of all completed transactions.
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            {!loading && (
+              <span className="text-sm font-medium bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                {sales.length} Total Sales
+              </span>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full hover:bg-gray-200 text-gray-600"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto">{renderContent()}</div>
+        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+          {renderContent()}
+        </div>
       </div>
     </div>
   );

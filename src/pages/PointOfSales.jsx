@@ -262,7 +262,7 @@ const PointOfSales = ({ branding }) => {
             ) : (
               <div className="space-y-4">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4">
+                  <div key={item.uniqueId} className="flex items-center gap-4">
                     <div className="flex-grow">
                       <p className="font-semibold text-gray-800">{item.name}</p>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -304,7 +304,7 @@ const PointOfSales = ({ branding }) => {
                       </button>
                       <button
                         onClick={() =>
-                          updateCartQuantity(item.id, item.quantity - 1)
+                          updateCartQuantity(item.uniqueId, item.quantity - 1)
                         }
                         className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
                       >
@@ -314,13 +314,16 @@ const PointOfSales = ({ branding }) => {
                         type="number"
                         value={item.quantity}
                         onChange={(e) =>
-                          updateCartQuantity(item.id, parseInt(e.target.value))
+                          updateCartQuantity(
+                            item.uniqueId,
+                            parseInt(e.target.value)
+                          )
                         }
                         className="w-12 text-center font-medium border border-gray-200 rounded-md"
                       />
                       <button
                         onClick={() =>
-                          updateCartQuantity(item.id, item.quantity + 1)
+                          updateCartQuantity(item.uniqueId, item.quantity + 1)
                         }
                         className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
                       >
@@ -334,7 +337,7 @@ const PointOfSales = ({ branding }) => {
                       ).toFixed(2)}
                     </p>
                     <button
-                      onClick={() => updateCartQuantity(item.id, 0)}
+                      onClick={() => updateCartQuantity(item.uniqueId, 0)}
                       className="text-gray-400 hover:text-red-500 p-1"
                     >
                       <X size={16} />
@@ -403,6 +406,7 @@ const PointOfSales = ({ branding }) => {
           }}
           product={selectedProduct}
           onAddToCart={handleAddToCart}
+          cart={cart}
           existingCartItem={editingCartItem}
           reservedPieces={getReservedPieces(
             selectedProduct.id,
