@@ -51,7 +51,7 @@ const PointOfSales = ({ branding }) => {
     getReservedPieces,
     updateCartQuantity,
     handleCheckout,
-  } = usePointOfSale();
+  } = usePointOfSale(branding);
 
   const getVariantIcon = (unitType) => {
     switch (unitType) {

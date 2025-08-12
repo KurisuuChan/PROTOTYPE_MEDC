@@ -1,5 +1,8 @@
 import { supabase } from "@/supabase/client";
 
+// ADDED EXPORT
+export { supabase };
+
 // Authentication
 export const signIn = (email, password) =>
   supabase.auth.signInWithPassword({ email, password });

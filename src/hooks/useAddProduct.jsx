@@ -1,5 +1,5 @@
 // src/hooks/useAddProduct.jsx
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import * as api from "@/services/api";
 import { useNotification } from "@/hooks/useNotification";
 
@@ -30,11 +30,11 @@ export const useAddProduct = (onSuccess) => {
   const [error, setError] = useState("");
   const { addNotification } = useNotification();
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData(initialFormState);
     setVariants(initialVariantState);
     setError("");
-  };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

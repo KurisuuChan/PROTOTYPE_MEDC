@@ -1,33 +1,199 @@
-// src/utils/formatters.js
-export const formatStock = (quantity, variants) => {
-  if (!variants || variants.length === 0) {
-    return `${quantity} pieces`;
-  }
+import { useState, useEffect, useMemo, useCallback } from "react";
+import * as api from "@/services/api";
+import { useNotification } from "@/hooks/useNotification";
 
-  let remaining = quantity;
-  const parts = [];
+export const usePointOfSale = () => {
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDiscounted, setIsDiscounted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [editingCartItem, setEditingCartItem] = useState(null);
 
-  const sortedVariants = [...variants].sort(
-    (a, b) => b.units_per_variant - a.units_per_variant
+  const { addNotification } = useNotification();
+
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const { data, error: fetchError } = await api.getAvailableProducts();
+    if (fetchError) {
+      console.error("Error fetching products for POS:", fetchError);
+      setError(fetchError);
+    } else {
+      setProducts(data || []);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  const resetSale = () => {
+    setCart([]);
+    setIsDiscounted(false);
+    setSearchTerm("");
+  };
+
+  const handleSelectProduct = (product) => {
+    const isInCart = cart.some((item) => item.id === product.id);
+    if (isInCart) {
+      setEditingCartItem(cart.find((item) => item.id === product.id));
+    } else {
+      setEditingCartItem(null);
+    }
+    setSelectedProduct(product);
+    setIsVariantModalOpen(true);
+  };
+
+  const handleAddToCart = (productToAdd) => {
+    setCart((prevCart) => {
+      const existingItemIndex = prevCart.findIndex(
+        (item) => item.id === productToAdd.id
+      );
+      if (existingItemIndex > -1) {
+        const updatedCart = [...prevCart];
+        updatedCart[existingItemIndex] = productToAdd;
+        return updatedCart;
+      }
+      return [...prevCart, productToAdd];
+    });
+  };
+
+  const getReservedPieces = (productId, variantIdToExclude) => {
+    return cart.reduce((total, item) => {
+      if (item.id === productId) {
+        // If we are editing an item, don't count its own reserved pieces
+        if (
+          editingCartItem &&
+          item.selectedVariant?.id === variantIdToExclude
+        ) {
+          return total;
+        }
+        return (
+          total + item.quantity * (item.selectedVariant?.units_per_variant || 1)
+        );
+      }
+      return total;
+    }, 0);
+  };
+
+  const updateCartQuantity = (productId, newQuantity) => {
+    setCart((prevCart) => {
+      if (newQuantity <= 0) {
+        return prevCart.filter((item) => item.id !== productId);
+      }
+      return prevCart.map((item) =>
+        item.id === productId ? { ...item, quantity: newQuantity } : item
+      );
+    });
+  };
+
+  const { subtotal, total } = useMemo(() => {
+    const sub = cart.reduce(
+      (acc, item) => acc + (item.currentPrice || item.price) * item.quantity,
+      0
+    );
+    const finalTotal = isDiscounted ? sub * 0.8 : sub;
+    return { subtotal: sub, total: finalTotal };
+  }, [cart, isDiscounted]);
+
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) {
+      return products;
+    }
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.medicineId.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
+
+  const lowStockProducts = useMemo(
+    () => products.filter((p) => p.quantity > 0 && p.quantity <= 10),
+    [products]
+  );
+  const outOfStockProducts = useMemo(
+    () => products.filter((p) => p.quantity === 0),
+    [products]
   );
 
-  for (const variant of sortedVariants) {
-    if (variant.units_per_variant > 1) {
-      const count = Math.floor(remaining / variant.units_per_variant);
-      if (count > 0) {
-        parts.push(`${count} ${variant.unit_type}(s)`);
-        remaining %= variant.units_per_variant;
-      }
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      addNotification("Cart is empty.", "warning");
+      return;
     }
-  }
+    setLoading(true);
+    try {
+      const saleData = {
+        total_amount: total,
+        discount_applied: isDiscounted,
+      };
+      const { data: newSale, error: saleError } = await api.addSale(saleData);
+      if (saleError) throw saleError;
 
-  if (remaining > 0) {
-    parts.push(`${remaining} piece(s)`);
-  }
+      const saleItemsData = cart.map((item) => ({
+        sale_id: newSale.id,
+        product_id: item.id,
+        variant_id: item.selectedVariant ? item.selectedVariant.id : null,
+        quantity: item.quantity,
+        price_at_sale: item.currentPrice,
+      }));
+      const { error: itemsError } = await api.addSaleItems(saleItemsData);
+      if (itemsError) throw itemsError;
 
-  if (parts.length === 0 && quantity === 0) {
-    return "Out of Stock";
-  }
+      for (const item of cart) {
+        const product = products.find((p) => p.id === item.id);
+        if (product) {
+          const piecesSold =
+            item.quantity * (item.selectedVariant?.units_per_variant || 1);
+          const newQuantity = Math.max(0, product.quantity - piecesSold);
+          await api.updateProduct(item.id, { quantity: newQuantity });
+        }
+      }
 
-  return parts.length > 0 ? parts.join(", ") : `${quantity} pieces`;
+      addNotification("Sale completed successfully!", "success");
+      resetSale();
+      fetchProducts();
+    } catch (error) {
+      addNotification(`Checkout failed: ${error.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    products,
+    loading,
+    error,
+    cart,
+    searchTerm,
+    setSearchTerm,
+    isDiscounted,
+    setIsDiscounted,
+    isHistoryModalOpen,
+    setIsHistoryModalOpen,
+    isVariantModalOpen,
+    setIsVariantModalOpen,
+    selectedProduct,
+    setSelectedProduct,
+    editingCartItem,
+    setEditingCartItem,
+    subtotal,
+    total,
+    filteredProducts,
+    lowStockProducts,
+    outOfStockProducts,
+    fetchProducts,
+    handleSelectProduct,
+    handleAddToCart,
+    getReservedPieces,
+    updateCartQuantity,
+    handleCheckout,
+  };
 };
