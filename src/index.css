@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  @keyframes pulse-once {
+    0%,
+    100% {
+      background-color: transparent;
+    }
+    50% {
+      background-color: #fef9c3; /* bg-yellow-100 */
+    }
+  }
+  .animate-pulse-once {
+    animation: pulse-once 2s ease-in-out;
+  }
+}
