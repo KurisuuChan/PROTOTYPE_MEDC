@@ -2,39 +2,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Eye, Pencil } from "lucide-react";
 
-const formatStock = (quantity, variants) => {
-  if (!variants || variants.length === 0) {
-    return `${quantity} pieces`;
-  }
-
-  let remaining = quantity;
-  const parts = [];
-
-  const sortedVariants = [...variants].sort(
-    (a, b) => b.units_per_variant - a.units_per_variant
-  );
-
-  for (const variant of sortedVariants) {
-    if (variant.units_per_variant > 1) {
-      const count = Math.floor(remaining / variant.units_per_variant);
-      if (count > 0) {
-        parts.push(`${count} ${variant.unit_type}(s)`);
-        remaining %= variant.units_per_variant;
-      }
-    }
-  }
-
-  if (remaining > 0) {
-    parts.push(`${remaining} piece(s)`);
-  }
-
-  if (parts.length === 0 && quantity === 0) {
-    return "0";
-  }
-
-  return parts.length > 0 ? parts.join(", ") : `${quantity} pieces`;
-};
-
 const ProductTableRow = ({
   product,
   isSelected,
@@ -47,21 +14,24 @@ const ProductTableRow = ({
     switch (status) {
       case "Available":
         return (
-          <span className="px-3 py-1 text-xs font-semibold leading-tight text-green-700 bg-green-100 rounded-full">
-            {status}
-          </span>
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-green-700">{status}</span>
+          </div>
         );
       case "Unavailable":
         return (
-          <span className="px-3 py-1 text-xs font-semibold leading-tight text-red-700 bg-red-100 rounded-full">
-            {status}
-          </span>
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <span className="text-red-700">{status}</span>
+          </div>
         );
       default:
         return (
-          <span className="px-3 py-1 text-xs font-semibold leading-tight text-gray-700 bg-gray-100 rounded-full">
-            {status}
-          </span>
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+            <span className="text-gray-600">{status}</span>
+          </div>
         );
     }
   };
@@ -77,10 +47,8 @@ const ProductTableRow = ({
   };
 
   return (
-    <tr
-      className={`transition-colors duration-500 group align-middle ${getRowClass()}`}
-    >
-      <td className="px-4 sm:px-6 py-4">
+    <tr className={`transition-colors duration-200 ${getRowClass()}`}>
+      <td className="px-6 py-4">
         <input
           type="checkbox"
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -88,95 +56,35 @@ const ProductTableRow = ({
           onChange={() => onSelectItem(product.id)}
         />
       </td>
-      <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-        {product.medicineId}
+      <td className="px-6 py-4">
+        <div className="font-bold text-gray-900">{product.name}</div>
+        <div className="text-sm text-gray-500">{product.medicineId}</div>
       </td>
-      <td className="px-4 sm:px-6 py-4 font-medium text-gray-900">
-        {product.name}
+      <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
+      <td className="px-6 py-4 text-center text-sm font-medium">
+        {product.quantity}
       </td>
-      <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-        {product.category}
+      <td className="px-6 py-4 text-sm text-gray-800 font-semibold">
+        ₱{product.price?.toFixed(2)}
       </td>
-      <td className="px-4 sm:px-6 py-4 text-sm text-center">
-        {(() => {
-          let qtyClass = "bg-gray-100 text-gray-700";
-          if (product.quantity === 0) qtyClass = "bg-red-100 text-red-700";
-          else if (product.quantity <= 10)
-            qtyClass = "bg-yellow-100 text-yellow-700";
-
-          const stockText = formatStock(
-            product.quantity,
-            product.product_variants
-          );
-
-          return (
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-semibold ${qtyClass}`}
-            >
-              {stockText}
-            </span>
-          );
-        })()}
+      <td className="px-6 py-4 text-sm text-gray-600">
+        {product.expireDate || "N/A"}
       </td>
-      <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 text-center">
-        <div className="flex flex-col gap-1">
-          <span className="font-medium">₱{product.price?.toFixed(2)}</span>
-          {product.product_variants && product.product_variants.length > 1 && (
-            <div className="text-xs text-gray-500">
-              {product.product_variants.slice(0, 2).map((variant) => (
-                <div key={variant.id} className="flex justify-between">
-                  <span>{variant.unit_type}:</span>
-                  <span>₱{variant.unit_price?.toFixed(2)}</span>
-                </div>
-              ))}
-              {product.product_variants.length > 2 && (
-                <span className="text-gray-400">
-                  +{product.product_variants.length - 2} more
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </td>
-      <td className="px-4 sm:px-6 py-4 text-sm whitespace-nowrap">
-        {(() => {
-          if (!product.expireDate)
-            return <span className="text-gray-400">N/A</span>;
-          const today = new Date();
-          const exp = new Date(product.expireDate);
-          let expClass = "bg-gray-100 text-gray-700";
-          if (exp < today) expClass = "bg-red-100 text-red-700";
-          else {
-            const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-            if (diffDays <= 30) expClass = "bg-orange-100 text-orange-700";
-          }
-          return (
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-semibold ${expClass}`}
-            >
-              {product.expireDate}
-            </span>
-          );
-        })()}
-      </td>
-      <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-        {product.productType}
-      </td>
-      <td className="px-4 sm:px-6 py-4 text-center">
+      <td className="px-6 py-4 text-sm font-semibold text-center">
         {getStatusBadge(product.status)}
       </td>
-      <td className="px-4 sm:px-6 py-4 text-sm text-center">
+      <td className="px-6 py-4 text-center">
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => onViewProduct(product)}
-            className="p-2 rounded-full text-gray-400 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+            className="p-2 rounded-full text-gray-400 hover:bg-blue-100 hover:text-blue-600"
             title="View Details"
           >
             <Eye size={18} />
           </button>
           <button
             onClick={() => onEditProduct(product)}
-            className="p-2 rounded-full text-gray-400 hover:bg-green-100 hover:text-green-600 transition-colors"
+            className="p-2 rounded-full text-gray-400 hover:bg-green-100 hover:text-green-600"
             title="Edit Product"
           >
             <Pencil size={18} />

@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import ProductTableRow from "./ProductTableRow";
+import { PackageX } from "lucide-react";
 
 const ProductTable = ({
   products,
@@ -26,73 +27,85 @@ const ProductTable = ({
   };
 
   return (
-    <div className="w-full overflow-x-auto border border-gray-200 rounded-lg hidden md:block">
-      <table className="min-w-[900px] w-full">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 sm:px-6 py-3 w-12 text-left">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                onChange={handleSelectAll}
-                checked={
-                  searchedProducts.length > 0 &&
-                  selectedItems.length === searchedProducts.length
-                }
-              />
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Medicine ID
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Name
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Category
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Quantity
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Price
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Expire Date
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Product Type
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Status
-            </th>
-            <th className="px-4 sm:px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Action
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {products.length > 0 ? (
-            products.map((product) => (
-              <ProductTableRow
-                key={product.id}
-                product={product}
-                isSelected={selectedItems.includes(product.id)}
-                onSelectItem={handleSelectItem}
-                onViewProduct={onViewProduct}
-                onEditProduct={onEditProduct}
-                isHighlighted={highlightedRow === product.id}
-              />
-            ))
-          ) : (
+    <>
+      <div className="w-full overflow-x-auto border border-gray-200 rounded-lg hidden md:block">
+        <table className="min-w-full w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <td colSpan="10" className="px-6 py-8 text-center text-gray-500">
-                No products found.
-              </td>
+              <th className="px-6 py-3 w-12 text-left">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  onChange={handleSelectAll}
+                  checked={
+                    searchedProducts.length > 0 &&
+                    selectedItems.length === searchedProducts.length
+                  }
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Product
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Category
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Stock
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Price
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Expiry Date
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {products.length > 0 ? (
+              products.map((product) => (
+                <ProductTableRow
+                  key={product.id}
+                  product={product}
+                  isSelected={selectedItems.includes(product.id)}
+                  onSelectItem={handleSelectItem}
+                  onViewProduct={onViewProduct}
+                  onEditProduct={onEditProduct}
+                  isHighlighted={highlightedRow === product.id}
+                />
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan="8"
+                  className="px-6 py-12 text-center text-gray-500"
+                >
+                  <div className="flex flex-col items-center">
+                    <PackageX size={48} className="mb-2" />
+                    <p className="font-semibold">No products found.</p>
+                    <p className="text-sm">
+                      Try adjusting your search or filters.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <MobileProductCards
+        products={products}
+        selectedItems={selectedItems}
+        handleSelectItem={handleSelectItem}
+        onViewProduct={onViewProduct}
+        onEditProduct={onEditProduct}
+      />
+    </>
   );
 };
 
@@ -103,96 +116,67 @@ const MobileProductCards = ({
   onViewProduct,
   onEditProduct,
 }) => {
-  const renderStatusBadge = (status) => {
-    const base = "px-2 py-0.5 rounded-full text-xs font-semibold";
-    if (status === "Available")
-      return (
-        <span className={`${base} bg-green-100 text-green-700`}>Available</span>
-      );
-    if (status === "Unavailable")
-      return (
-        <span className={`${base} bg-red-100 text-red-700`}>Unavailable</span>
-      );
-    return (
-      <span className={`${base} bg-gray-100 text-gray-700`}>{status}</span>
-    );
-  };
-
-  const renderQuantityChip = (qty) => {
-    let cls = "bg-gray-100 text-gray-700";
-    if (qty === 0) cls = "bg-red-100 text-red-700";
-    else if (qty <= 10) cls = "bg-yellow-100 text-yellow-700";
-    return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
-        {qty}
-      </span>
-    );
-  };
-
-  const renderExpiryChip = (dateStr) => {
-    if (!dateStr) return <span className="text-gray-400">N/A</span>;
-    const today = new Date();
-    const exp = new Date(dateStr);
-    let cls = "bg-gray-100 text-gray-700";
-    if (exp < today) cls = "bg-red-100 text-red-700";
-    else {
-      const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-      if (diffDays <= 30) cls = "bg-orange-100 text-orange-700";
-    }
-    return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
-        {dateStr}
-      </span>
-    );
-  };
-
   return (
-    <div className="md:hidden space-y-3">
+    <div className="md:hidden space-y-4">
       {products.length > 0 ? (
         products.map((p) => (
           <div
             key={p.id}
-            className="border border-gray-200 rounded-xl p-4 bg-white"
+            className={`border rounded-xl p-4 bg-white transition-all ${
+              selectedItems.includes(p.id)
+                ? "border-blue-500 shadow-md"
+                : "border-gray-200"
+            }`}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     checked={selectedItems.includes(p.id)}
                     onChange={() => handleSelectItem(p.id)}
                   />
-                  <p className="text-xs text-gray-500">{p.medicineId}</p>
+                  <div>
+                    <p className="font-bold text-gray-900 truncate">{p.name}</p>
+                    <p className="text-sm text-gray-500">{p.category}</p>
+                  </div>
                 </div>
-                <p className="font-semibold text-gray-900 truncate">{p.name}</p>
-                <p className="text-sm text-gray-500">{p.category}</p>
               </div>
-              <div className="flex flex-col items-end gap-1">
-                {renderQuantityChip(p.quantity)}
-                <span className="text-sm font-semibold text-gray-900">
-                  ₱{p.price?.toFixed(2)}
-                </span>
+              <p className="text-lg font-bold text-gray-900">
+                ₱{p.price?.toFixed(2)}
+              </p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Stock</p>
+                <p className="font-medium">{p.quantity} units</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Expiry</p>
+                <p className="font-medium">{p.expireDate || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Status</p>
+                <p className="font-medium">{p.status}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Type</p>
+                <p className="font-medium">{p.productType}</p>
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                {renderExpiryChip(p.expireDate)}
-                <span className="text-gray-400">•</span>
-                <span className="text-gray-600">{p.productType}</span>
-              </div>
-              <div>{renderStatusBadge(p.status)}</div>
-            </div>
-            <div className="mt-3 flex justify-end gap-2">
+
+            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end gap-2">
               <button
                 onClick={() => onViewProduct(p)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 View
               </button>
               <button
                 onClick={() => onEditProduct(p)}
-                className="px-3 py-1.5 text-sm rounded-lg border border-green-300 text-green-700 hover:bg-green-50"
+                className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
               >
                 Edit
               </button>
@@ -200,7 +184,10 @@ const MobileProductCards = ({
           </div>
         ))
       ) : (
-        <div className="text-center text-gray-500 py-8">No products found.</div>
+        <div className="text-center text-gray-500 py-12">
+          <PackageX size={48} className="mx-auto mb-2" />
+          <p className="font-semibold">No products found.</p>
+        </div>
       )}
     </div>
   );
@@ -225,6 +212,4 @@ ProductTable.propTypes = {
 };
 
 export default ProductTable;
-
-// Named export for mobile cards to render alongside table in parent if needed
 export { MobileProductCards };

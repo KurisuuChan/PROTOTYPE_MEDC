@@ -1,6 +1,6 @@
 // src/hooks/useManagement.jsx
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import * as api from "@/services/api";
 import { addSystemNotification } from "@/utils/notificationStorage";
 
@@ -24,6 +24,7 @@ export const useManagement = (addNotification) => {
   const [highlightedRow, setHighlightedRow] = useState(null);
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -42,18 +43,21 @@ export const useManagement = (addNotification) => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Effect for handling row highlighting from URL params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const highlightId = params.get("highlight");
     if (highlightId) {
       const numericId = parseInt(highlightId, 10);
-      setActiveFilters({ status: "All", productType: "All" }); // Reset filters to find the item
       setHighlightedRow(numericId);
-      const timer = setTimeout(() => setHighlightedRow(null), 3000);
+
+      // We need to remove the highlight from the URL to avoid a refresh loop
+      params.delete("highlight");
+      navigate({ search: params.toString() }, { replace: true });
+
+      const timer = setTimeout(() => setHighlightedRow(null), 3000); // Highlight for 3 seconds
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate]);
 
   const normalizedProducts = useMemo(() => {
     return (products || []).map((product) => ({
