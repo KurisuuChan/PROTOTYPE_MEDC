@@ -1,3 +1,4 @@
+// src/components/notifications/NotificationsDropdown.jsx
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
@@ -92,7 +93,6 @@ NotificationGroup.propTypes = {
 
 const NotificationsDropdown = ({
   isOpen,
-  unreadCount,
   notifications,
   loading,
   categories,
@@ -102,7 +102,6 @@ const NotificationsDropdown = ({
   setSearch,
   mutedCategories,
   toggleMuteCategory,
-  onMarkAllAsRead,
   onMarkAsRead,
   onDismiss,
   onMarkCategoryAsRead,
@@ -159,29 +158,20 @@ const NotificationsDropdown = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute right-0 mt-3 w-[28rem] bg-white rounded-2xl shadow-2xl border border-gray-100 z-30 overflow-hidden">
+    <div className="absolute right-0 mt-3 w-[28rem] bg-white rounded-2xl shadow-2xl border border-gray-100 z-30 flex flex-col">
       <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 sticky top-0 bg-white">
         <h3 className="font-semibold text-gray-800">Notifications</h3>
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
-              className="pl-8 pr-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <button
-            onClick={onMarkAllAsRead}
-            className="text-sm text-blue-600 hover:underline disabled:text-gray-300"
-            disabled={unreadCount === 0}
-          >
-            Mark all as read
-          </button>
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="pl-8 pr-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       </div>
       <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 sticky top-[45px] z-10">
@@ -232,6 +222,14 @@ const NotificationsDropdown = ({
         </div>
       </div>
       <div className="max-h-[28rem] overflow-y-auto">{renderContent()}</div>
+      <div className="p-2 text-center border-t border-gray-100 bg-gray-50">
+        <Link
+          to="/notifications"
+          className="text-sm font-medium text-blue-600 hover:underline"
+        >
+          View All Notifications
+        </Link>
+      </div>
     </div>
   );
 };
@@ -248,7 +246,6 @@ NotificationsDropdown.propTypes = {
   setSearch: PropTypes.func.isRequired,
   mutedCategories: PropTypes.array.isRequired,
   toggleMuteCategory: PropTypes.func.isRequired,
-  onMarkAllAsRead: PropTypes.func.isRequired,
   onMarkAsRead: PropTypes.func.isRequired,
   onDismiss: PropTypes.func.isRequired,
   onMarkCategoryAsRead: PropTypes.func.isRequired,

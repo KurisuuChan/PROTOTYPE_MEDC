@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState, useEffect, Suspense, lazy, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
@@ -9,6 +10,7 @@ const PointOfSales = lazy(() => import("./pages/PointOfSales"));
 const Contacts = lazy(() => import("./pages/Contacts"));
 const Settings = lazy(() => import("./pages/Settings"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const NotificationHistory = lazy(() => import("./pages/NotificationHistory"));
 import * as api from "@/services/api";
 import defaultLogo from "@/assets/images/logo-transparent.png";
 
@@ -111,6 +113,10 @@ function App() {
                         element={<PointOfSales branding={branding} />}
                       />
                       <Route path="/contacts" element={<Contacts />} />
+                      <Route
+                        path="/notifications"
+                        element={<NotificationHistory />}
+                      />
                       <Route
                         path="/settings"
                         element={

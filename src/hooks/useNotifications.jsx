@@ -1,3 +1,4 @@
+// src/hooks/useNotifications.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/supabase/client";
 import {
@@ -64,7 +65,7 @@ export default function useNotifications() {
     const pushExpiryNotifications = (product) => {
       const expiredId = `expired-${product.id}`;
       const expiryDate = new Date(product.expireDate);
-      if (expiryDate < today) {
+      if (product.expireDate && expiryDate < today) {
         generated.push({
           id: expiredId,
           iconType: "expired",
@@ -108,7 +109,6 @@ export default function useNotifications() {
       let timestampsChanged = false;
       const baseLowStockId = `low-${product.id}`;
 
-      // Clear episodes when stock recovers or hits zero
       if (product.quantity > lowThreshold && timestamps[baseLowStockId]) {
         delete timestamps[baseLowStockId];
         timestampsChanged = true;
@@ -118,7 +118,6 @@ export default function useNotifications() {
         timestampsChanged = true;
       }
 
-      // Low stock episode tracking
       if (product.quantity <= lowThreshold && product.quantity > 0) {
         let timestamp = timestamps[baseLowStockId];
         if (!timestamp) {
@@ -140,7 +139,6 @@ export default function useNotifications() {
         });
       }
 
-      // Out of stock
       if (product.quantity === 0) {
         const noStockId = `no-stock-${product.id}`;
         notes.push({
@@ -234,7 +232,7 @@ export default function useNotifications() {
   const categoryCounts = useMemo(() => {
     return notifications.reduce(
       (acc, n) => {
-        acc.All += 1;
+        acc.All = (acc.All || 0) + 1;
         acc[n.category] = (acc[n.category] || 0) + 1;
         return acc;
       },
@@ -242,19 +240,46 @@ export default function useNotifications() {
     );
   }, [notifications]);
 
+  const groupedByDate = useMemo(() => {
+    const groups = {};
+    notifications.forEach((n) => {
+      const dateKey = new Date(n.createdAt).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(n);
+    });
+    return Object.entries(groups).map(([date, items]) => ({ date, items }));
+  }, [notifications]);
+
+  const dismiss = useCallback(
+    (notificationId) => {
+      const dismissed = getDismissedNotificationIds();
+      setDismissedNotificationIds([...new Set([...dismissed, notificationId])]);
+      const target = notifications.find((n) => n.id === notificationId);
+      if (target && target.category === "System") {
+        removeSystemNotification(notificationId);
+      }
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    },
+    [notifications]
+  );
+
   const markAsRead = useCallback(
     (notificationId) => {
       const readIds = getReadNotificationIds();
       if (!readIds.includes(notificationId)) {
         setReadNotificationIds([...readIds, notificationId]);
       }
-      const updated = notifications.map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
       );
-      setNotifications(updated);
-      const target = updated.find((x) => x.id === notificationId);
+      const target = notifications.find((x) => x.id === notificationId);
       if (target && target.category === "System") {
-        // Auto-dismiss system notifications after marking as read
         dismiss(notificationId);
       }
     },
@@ -266,9 +291,8 @@ export default function useNotifications() {
     const readIds = getReadNotificationIds();
     const newReadIds = [...new Set([...readIds, ...allIds])];
     setReadNotificationIds(newReadIds);
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
 
-    // Dismiss all system notifications and remove from storage
     const systemOnly = notifications.filter((n) => n.category === "System");
     const dismissed = getDismissedNotificationIds();
     const toDismiss = systemOnly.map((n) => n.id);
@@ -276,25 +300,13 @@ export default function useNotifications() {
     toDismiss.forEach((id) => removeSystemNotification(id));
   }, [notifications]);
 
-  const dismiss = useCallback(
-    (notificationId) => {
-      const dismissed = getDismissedNotificationIds();
-      setDismissedNotificationIds([...new Set([...dismissed, notificationId])]);
-      const target = notifications.find((n) => n.id === notificationId);
-      if (target && target.category === "System") {
-        removeSystemNotification(notificationId);
-      }
-      setNotifications(notifications.filter((n) => n.id !== notificationId));
-    },
-    [notifications]
-  );
-
   return {
     notifications,
     loading,
     unreadCount,
     categories,
     categoryCounts,
+    groupedByDate,
     refresh: fetchNotifications,
     markAsRead,
     markAllAsRead,
