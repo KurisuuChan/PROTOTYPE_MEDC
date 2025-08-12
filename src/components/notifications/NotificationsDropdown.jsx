@@ -236,7 +236,6 @@ const NotificationsDropdown = ({
 
 NotificationsDropdown.propTypes = {
   isOpen: PropTypes.bool.isRequired,
-  unreadCount: PropTypes.number.isRequired,
   notifications: PropTypes.array.isRequired,
   loading: PropTypes.bool.isRequired,
   categories: PropTypes.array.isRequired,
