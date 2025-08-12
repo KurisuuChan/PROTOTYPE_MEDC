@@ -1,31 +1,12 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+// src/pages/auth/LoginPage.jsx
+import React from "react";
 import PropTypes from "prop-types";
 import { AlertCircle, Loader2 } from "lucide-react";
-import * as api from "@/services/api";
+import { useLogin } from "@/hooks/useLogin";
 
 const LoginPage = ({ onLogin, branding }) => {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const { error } = await api.signIn(email, password);
-      if (error) throw error;
-      onLogin();
-      navigate("/");
-    } catch (error) {
-      const errorMessage = error.error_description || error.message;
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { credentials, error, loading, handleChange, handleLogin } =
+    useLogin(onLogin);
 
   return (
     <div className="flex items-center justify-center h-screen bg-blue-100 font-sans">
@@ -40,13 +21,7 @@ const LoginPage = ({ onLogin, branding }) => {
           </p>
         </div>
 
-        <form
-          className="w-4/5 mx-auto space-y-8"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleLogin();
-          }}
-        >
+        <form className="w-4/5 mx-auto space-y-8" onSubmit={handleLogin}>
           {error && (
             <div
               className="bg-red-50 border-l-4 border-red-400 p-4"
@@ -77,8 +52,8 @@ const LoginPage = ({ onLogin, branding }) => {
               autoComplete="email"
               required
               className="w-full px-4 py-3 text-lg text-gray-800 bg-white border border-gray-400 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={credentials.email}
+              onChange={handleChange}
             />
           </div>
 
@@ -96,8 +71,8 @@ const LoginPage = ({ onLogin, branding }) => {
               autoComplete="current-password"
               required
               className="w-full px-4 py-3 text-lg text-gray-800 bg-white border border-gray-400 rounded-xl focus:outline-none focus:border-indigo-500 transition-colors"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={credentials.password}
+              onChange={handleChange}
             />
           </div>
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import * as api from "@/services/api";
+// src/pages/Archived.jsx
+import React from "react";
 import {
   Archive,
   RotateCcw,
@@ -12,82 +12,18 @@ import {
 import { useNotification } from "@/hooks/useNotification";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { usePagination } from "@/hooks/usePagination.jsx";
-import { addSystemNotification } from "@/utils/notificationStorage";
+import { useArchivedProducts } from "@/hooks/useArchivedProducts";
 
 const Archived = () => {
-  const [archivedProducts, setArchivedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const { addNotification } = useNotification();
-
-  const fetchArchivedProducts = async () => {
-    setLoading(true);
-    setError(null); // Reset error state
-    const { data, error } = await api.getArchivedProducts();
-
-    if (error) {
-      console.error("Error fetching archived products:", error);
-      setError(error);
-    } else {
-      setArchivedProducts(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchArchivedProducts();
-  }, []);
-
-  const handleUnarchive = async (productId) => {
-    const { error } = await api.updateProduct(productId, {
-      status: "Available",
-    });
-
-    if (error) {
-      addNotification(`Error: ${error.message}`, "error");
-    } else {
-      addNotification("Product successfully unarchived.", "success");
-      addSystemNotification({
-        id: `unarchive-${productId}-${Date.now()}`,
-        iconType: "unarchive",
-        iconBg: "bg-green-100",
-        title: "Product Unarchived",
-        category: "System",
-        description: `A product was moved back to Available.`,
-        createdAt: new Date().toISOString(),
-        path: "/management",
-      });
-      fetchArchivedProducts();
-    }
-  };
-
-  const handleDeletePermanent = async (productId) => {
-    // Replace window.confirm with a custom modal in a real app
-    if (
-      confirm(
-        "Are you sure you want to permanently delete this product? This action cannot be undone."
-      )
-    ) {
-      const { error } = await api.deleteProduct(productId);
-
-      if (error) {
-        addNotification(`Error: ${error.message}`, "error");
-      } else {
-        addNotification("Product permanently deleted.", "success");
-        addSystemNotification({
-          id: `delete-${productId}-${Date.now()}`,
-          iconType: "delete",
-          iconBg: "bg-red-100",
-          title: "Product Deleted",
-          category: "System",
-          description: `A product was permanently deleted.`,
-          createdAt: new Date().toISOString(),
-          path: "/archived",
-        });
-        fetchArchivedProducts();
-      }
-    }
-  };
+  const {
+    archivedProducts,
+    loading,
+    error,
+    fetchArchivedProducts,
+    unarchiveProduct,
+    deleteProductPermanently,
+  } = useArchivedProducts(addNotification);
 
   const { searchTerm, setSearchTerm, searchedProducts } =
     useProductSearch(archivedProducts);
@@ -183,14 +119,14 @@ const Archived = () => {
                 </div>
                 <div className="flex items-center justify-end gap-2 mt-4">
                   <button
-                    onClick={() => handleDeletePermanent(product.id)}
+                    onClick={() => deleteProductPermanently(product.id)}
                     className="p-2 rounded-full text-gray-500 hover:bg-red-100 hover:text-red-600 transition-colors"
                     title="Delete Permanently"
                   >
                     <Trash2 size={18} />
                   </button>
                   <button
-                    onClick={() => handleUnarchive(product.id)}
+                    onClick={() => unarchiveProduct(product.id)}
                     className="p-2 rounded-full text-gray-500 hover:bg-green-100 hover:text-green-700 transition-colors"
                     title="Unarchive Product"
                   >
@@ -207,7 +143,9 @@ const Archived = () => {
           <PackageX size={48} className="mx-auto mb-4" />
           <h2 className="text-2xl font-semibold">No Archived Products Found</h2>
           <p className="text-md">
-            Your search for "{searchTerm}" did not return any results.
+            {searchTerm
+              ? `Your search for "${searchTerm}" did not return any results.`
+              : "There are no products in the archive."}
           </p>
         </div>
       )}

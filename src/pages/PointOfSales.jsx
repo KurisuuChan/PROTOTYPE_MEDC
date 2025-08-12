@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from "react";
+// src/pages/PointOfSales.jsx
+import React from "react";
 import PropTypes from "prop-types";
-import * as api from "@/services/api";
 import {
   Search,
   Plus,
@@ -19,248 +19,39 @@ import {
 } from "lucide-react";
 import SalesHistoryModal from "@/dialogs/SalesHistoryModal";
 import VariantSelectionModal from "@/dialogs/VariantSelectionModal";
-
-const formatStock = (quantity, variants) => {
-  if (!variants || variants.length === 0) {
-    return `${quantity} pieces`;
-  }
-
-  let remaining = quantity;
-  const parts = [];
-
-  const sortedVariants = [...variants].sort(
-    (a, b) => b.units_per_variant - a.units_per_variant
-  );
-
-  for (const variant of sortedVariants) {
-    if (variant.units_per_variant > 1) {
-      const count = Math.floor(remaining / variant.units_per_variant);
-      if (count > 0) {
-        parts.push(`${count} ${variant.unit_type}(s)`);
-        remaining %= variant.units_per_variant;
-      }
-    }
-  }
-
-  if (remaining > 0) {
-    parts.push(`${remaining} piece(s)`);
-  }
-
-  if (parts.length === 0 && quantity === 0) {
-    return "Out of Stock";
-  }
-
-  return parts.length > 0 ? parts.join(", ") : `${quantity} pieces`;
-};
+import { usePointOfSale } from "@/hooks/usePointOfSale";
+import { formatStock } from "@/utils/formatters";
 
 const PointOfSales = ({ branding }) => {
-  const [availableMedicines, setAvailableMedicines] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [cart, setCart] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isDiscounted, setIsDiscounted] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [editingCartItem, setEditingCartItem] = useState(null);
-  const PWD_SENIOR_DISCOUNT = 0.2;
-
-  const fetchProducts = async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error } = await api.getAvailableProductsWithVariants();
-
-    if (error) {
-      console.error("Error fetching products:", error);
-      setError(error);
-    } else {
-      setAvailableMedicines(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const handleSelectMedicine = (medicine) => {
-    if (!medicine?.id) {
-      console.warn("handleSelectMedicine: Invalid medicine data", medicine);
-      return;
-    }
-
-    // Check if item is already in cart
-    const itemInCart = cart.find((item) => item.id === medicine.id);
-
-    if (itemInCart) {
-      // If item exists, open modal to edit quantity/variant/discount
-      setEditingCartItem(itemInCart);
-      setSelectedProduct(medicine);
-      setIsVariantModalOpen(true);
-    } else {
-      // If new item, open modal to select variant and quantity
-      setEditingCartItem(null);
-      setSelectedProduct(medicine);
-      setIsVariantModalOpen(true);
-    }
-  };
-
-  const handleAddToCart = (cartItem) => {
-    if (!cartItem?.id) {
-      console.warn("handleAddToCart: Invalid cart item data", cartItem);
-      return;
-    }
-
-    if (editingCartItem) {
-      // Update existing cart item
-      setCart((prevCart) =>
-        prevCart.map((item) => (item.id === cartItem.id ? cartItem : item))
-      );
-    } else {
-      // Add new item to cart
-      setCart((prevCart) => [...prevCart, cartItem]);
-    }
-
-    // Reset modal state
-    setIsVariantModalOpen(false);
-    setSelectedProduct(null);
-    setEditingCartItem(null);
-  };
-
-  const getReservedPieces = (productId, excludeVariantId = null) => {
-    return cart
-      .filter((item) => item.id === productId)
-      .reduce((sum, item) => {
-        if (excludeVariantId && item.selectedVariant?.id === excludeVariantId) {
-          return sum;
-        }
-        const upv = item.selectedVariant?.units_per_variant || 1;
-        return sum + item.quantity * upv;
-      }, 0);
-  };
-
-  const updateQuantity = (medicineId, newQuantity) => {
-    const medicine = availableMedicines.find((m) => m.id === medicineId);
-    const cartItem = cart.find((item) => item.id === medicineId);
-    if (!medicine || !cartItem) return;
-
-    const unitsPerVariant = cartItem.selectedVariant?.units_per_variant || 1;
-    const reservedOtherPieces = getReservedPieces(medicineId, cartItem.id);
-    const availablePieces = Math.max(
-      0,
-      (medicine.quantity || 0) - reservedOtherPieces
-    );
-    const maxQuantity = Math.max(
-      0,
-      Math.floor(availablePieces / unitsPerVariant)
-    );
-
-    if (newQuantity < 1) {
-      setCart(cart.filter((item) => item.id !== medicineId));
-      return;
-    }
-
-    const clampedQuantity = Math.min(newQuantity, maxQuantity);
-    setCart(
-      cart.map((item) =>
-        item.id === medicineId ? { ...item, quantity: clampedQuantity } : item
-      )
-    );
-  };
-
-  const handleQuantityChange = (medicineId, e) => {
-    const newQuantity = parseInt(e.target.value, 10);
-    if (!isNaN(newQuantity)) {
-      updateQuantity(medicineId, newQuantity);
-    }
-  };
-
-  const total = useMemo(() => {
-    const subtotal = cart.reduce(
-      (acc, item) => acc + (item.currentPrice || item.price) * item.quantity,
-      0
-    );
-    return isDiscounted ? subtotal * (1 - PWD_SENIOR_DISCOUNT) : subtotal;
-  }, [cart, isDiscounted]);
-
-  const subtotal = useMemo(() => {
-    return cart.reduce(
-      (acc, item) => acc + (item.currentPrice || item.price) * item.quantity,
-      0
-    );
-  }, [cart]);
-
-  const filteredMedicines = useMemo(() => {
-    const filtered = availableMedicines.filter(
-      (med) =>
-        med.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        med.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        med.medicineId?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    // Sort by category and then by name for better organization
-    return filtered.sort((a, b) => {
-      if (a.category !== b.category) {
-        return a.category.localeCompare(b.category);
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [availableMedicines, searchTerm]);
-
-  const handleCheckout = async () => {
-    if (cart.length === 0) return;
-    setLoading(true);
-
-    try {
-      const { data: saleData, error: saleError } = await api.addSale({
-        total_amount: total,
-        discount_applied: isDiscounted,
-      });
-
-      if (saleError) throw saleError;
-
-      const saleItemsToInsert = cart.map((item) => ({
-        sale_id: saleData.id,
-        product_id: item.id,
-        variant_id: item.selectedVariant?.id || null,
-        quantity: item.quantity,
-        unit_type: item.selectedVariant?.unit_type || "unit",
-        price_at_sale: item.currentPrice || item.price,
-      }));
-
-      const { error: saleItemsError } = await api.addSaleItems(
-        saleItemsToInsert
-      );
-      if (saleItemsError) throw saleItemsError;
-
-      for (const item of cart) {
-        const { data: product, error: fetchError } = await api.getProductById(
-          item.id
-        );
-        if (fetchError) throw fetchError;
-        const unitsPerVariant = item.selectedVariant?.units_per_variant || 1;
-        const decrementUnits = item.quantity * unitsPerVariant;
-        const newQuantity = Math.max(
-          0,
-          (product.quantity || 0) - decrementUnits
-        );
-        const { error: updateError } = await api.updateProduct(item.id, {
-          quantity: newQuantity,
-          status: newQuantity > 0 ? "Available" : "Unavailable",
-        });
-        if (updateError) throw updateError;
-      }
-
-      setCart([]);
-      setIsDiscounted(false);
-      fetchProducts();
-    } catch (error) {
-      console.error("Checkout failed:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    products,
+    loading,
+    error,
+    cart,
+    searchTerm,
+    setSearchTerm,
+    isDiscounted,
+    setIsDiscounted,
+    isHistoryModalOpen,
+    setIsHistoryModalOpen,
+    isVariantModalOpen,
+    setIsVariantModalOpen,
+    selectedProduct,
+    setSelectedProduct,
+    editingCartItem,
+    setEditingCartItem,
+    subtotal,
+    total,
+    filteredProducts,
+    lowStockProducts,
+    outOfStockProducts,
+    fetchProducts,
+    handleSelectProduct,
+    handleAddToCart,
+    getReservedPieces,
+    updateCartQuantity,
+    handleCheckout,
+  } = usePointOfSale();
 
   const getVariantIcon = (unitType) => {
     switch (unitType) {
@@ -287,17 +78,6 @@ const PointOfSales = ({ branding }) => {
         return "Unit";
     }
   };
-
-  // Get low stock products for alerts
-  const lowStockProducts = useMemo(() => {
-    return availableMedicines.filter(
-      (med) => med.quantity <= 10 && med.quantity > 0
-    );
-  }, [availableMedicines]);
-
-  const outOfStockProducts = useMemo(() => {
-    return availableMedicines.filter((med) => med.quantity === 0);
-  }, [availableMedicines]);
 
   if (error) {
     return (
@@ -390,7 +170,7 @@ const PointOfSales = ({ branding }) => {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredMedicines.map((med) => {
+                {filteredProducts.map((med) => {
                   let stockClass = "text-gray-400";
                   let stockText;
 
@@ -410,7 +190,7 @@ const PointOfSales = ({ branding }) => {
                       className="border rounded-lg transition-all duration-200 hover:shadow-md hover:border-blue-400"
                     >
                       <button
-                        onClick={() => handleSelectMedicine(med)}
+                        onClick={() => handleSelectProduct(med)}
                         className={`w-full p-4 text-left transition-all duration-200 ${
                           cart.some((item) => item.id === med.id)
                             ? "bg-blue-50 border-blue-500 shadow-md"
@@ -513,7 +293,7 @@ const PointOfSales = ({ branding }) => {
                         onClick={() => {
                           setEditingCartItem(item);
                           setSelectedProduct(
-                            availableMedicines.find((m) => m.id === item.id)
+                            products.find((m) => m.id === item.id)
                           );
                           setIsVariantModalOpen(true);
                         }}
@@ -524,7 +304,7 @@ const PointOfSales = ({ branding }) => {
                       </button>
                       <button
                         onClick={() =>
-                          updateQuantity(item.id, item.quantity - 1)
+                          updateCartQuantity(item.id, item.quantity - 1)
                         }
                         className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
                       >
@@ -533,12 +313,14 @@ const PointOfSales = ({ branding }) => {
                       <input
                         type="number"
                         value={item.quantity}
-                        onChange={(e) => handleQuantityChange(item.id, e)}
+                        onChange={(e) =>
+                          updateCartQuantity(item.id, parseInt(e.target.value))
+                        }
                         className="w-12 text-center font-medium border border-gray-200 rounded-md"
                       />
                       <button
                         onClick={() =>
-                          updateQuantity(item.id, item.quantity + 1)
+                          updateCartQuantity(item.id, item.quantity + 1)
                         }
                         className="p-1.5 rounded-full bg-gray-100 hover:bg-gray-200"
                       >
@@ -552,7 +334,7 @@ const PointOfSales = ({ branding }) => {
                       ).toFixed(2)}
                     </p>
                     <button
-                      onClick={() => updateQuantity(item.id, 0)}
+                      onClick={() => updateCartQuantity(item.id, 0)}
                       className="text-gray-400 hover:text-red-500 p-1"
                     >
                       <X size={16} />
@@ -588,7 +370,7 @@ const PointOfSales = ({ branding }) => {
               {isDiscounted && (
                 <div className="flex justify-between items-center text-sm text-green-600">
                   <span>PWD/Senior Discount (20%):</span>
-                  <span>-₱{(subtotal * PWD_SENIOR_DISCOUNT).toFixed(2)}</span>
+                  <span>-₱{(subtotal * 0.2).toFixed(2)}</span>
                 </div>
               )}
             </div>
@@ -611,7 +393,6 @@ const PointOfSales = ({ branding }) => {
         </div>
       </div>
 
-      {/* Variant Selection Modal */}
       {selectedProduct && isVariantModalOpen && (
         <VariantSelectionModal
           isOpen={isVariantModalOpen}
