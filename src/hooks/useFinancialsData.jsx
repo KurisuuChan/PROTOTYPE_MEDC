@@ -31,6 +31,8 @@ export const useFinancialsData = () => {
       if (saleItemsError) throw saleItemsError;
 
       const totalProfit = saleItems.reduce((acc, item) => {
+        // Safely access product data
+        if (!item.products) return acc;
         const cost = item.products.cost_price || 0;
         const revenue = item.price_at_sale;
         const profitPerItem = revenue - cost;
@@ -39,8 +41,9 @@ export const useFinancialsData = () => {
 
       const profitability = products
         .map((product) => {
+          // Safely filter sale items
           const sales = saleItems.filter(
-            (item) => item.products.name === product.name
+            (item) => item.products && item.products.name === product.name
           );
           const totalSold = sales.reduce((acc, item) => acc + item.quantity, 0);
           const totalRevenue = sales.reduce(

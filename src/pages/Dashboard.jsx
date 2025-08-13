@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import React from "react";
+import { Link } from "react-router-dom"; // Import Link
 import {
   ChevronDown,
   Clock,
@@ -27,8 +28,6 @@ const Dashboard = () => {
     error,
     fetchDashboardData,
   } = useDashboardData();
-
-  // ... rest of the component remains the same
 
   if (loading) {
     return (
@@ -63,20 +62,33 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {summaryCards.map((card) => (
-          <div
-            key={card.title}
-            className="bg-white p-5 rounded-xl shadow-md flex flex-col justify-between transition-all hover:shadow-lg hover:-translate-y-1"
-          >
-            <div className="flex items-start justify-between">
-              <div className={`p-3 rounded-lg ${card.iconBg}`}>{card.icon}</div>
+        {summaryCards.map((card) => {
+          const cardContent = (
+            <div
+              key={card.title}
+              className="bg-white p-5 rounded-xl shadow-md flex flex-col justify-between transition-all hover:shadow-lg hover:-translate-y-1 h-full"
+            >
+              <div className="flex items-start justify-between">
+                <div className={`p-3 rounded-lg ${card.iconBg}`}>
+                  {card.icon}
+                </div>
+              </div>
+              <div className="mt-2">
+                <p className="text-gray-500 text-sm">{card.title}</p>
+                <p className="text-2xl font-bold text-gray-800">{card.value}</p>
+              </div>
             </div>
-            <div className="mt-2">
-              <p className="text-gray-500 text-sm">{card.title}</p>
-              <p className="text-2xl font-bold text-gray-800">{card.value}</p>
-            </div>
-          </div>
-        ))}
+          );
+
+          if (card.title === "Total Profit") {
+            return (
+              <Link to="/financials" key={card.title}>
+                {cardContent}
+              </Link>
+            );
+          }
+          return cardContent;
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -5,13 +5,14 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 
 // Lazy-loaded pages for this layout
-const Dashboard = lazy(() => import("../pages/Dashboard"));
-const Management = lazy(() => import("../pages/Management"));
-const Archived = lazy(() => import("../pages/Archived"));
-const PointOfSales = lazy(() => import("../pages/PointOfSales"));
-const Contacts = lazy(() => import("../pages/Contacts"));
-const Settings = lazy(() => import("../pages/Settings"));
-const NotificationHistory = lazy(() => import("../pages/NotificationHistory"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Management = lazy(() => import("@/pages/Management"));
+const Archived = lazy(() => import("@/pages/Archived"));
+const PointOfSales = lazy(() => import("@/pages/PointOfSales"));
+const Contacts = lazy(() => import("@/pages/Contacts"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const NotificationHistory = lazy(() => import("@/pages/NotificationHistory"));
+const Financials = lazy(() => import("@/pages/Financials")); // Corrected import path
 
 const FullLayout = ({ branding, user, handleLogout, onUpdate }) => (
   <div className="flex h-screen bg-gray-200">
@@ -29,6 +30,7 @@ const FullLayout = ({ branding, user, handleLogout, onUpdate }) => (
           />
           <Route path="/contacts" element={<Contacts />} />
           <Route path="/notifications" element={<NotificationHistory />} />
+          <Route path="/financials" element={<Financials />} />
           <Route path="/settings" element={<Settings onUpdate={onUpdate} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
