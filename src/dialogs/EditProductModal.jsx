@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { supabase } from "../supabase/client";
 import { X, Edit } from "lucide-react";
-import { useNotification } from "@/hooks/useNotification";
+import { useNotification } from "@/hooks/useNotifications";
 import { addSystemNotification } from "@/utils/notificationStorage";
 
 const productCategories = [

@@ -1,7 +1,7 @@
 // src/hooks/useAddProduct.jsx
 import { useState, useCallback } from "react";
 import * as api from "@/services/api";
-import { useNotification } from "@/hooks/useNotification";
+import { useNotification } from "@/hooks/useNotifications";
 
 const initialFormState = {
   name: "",

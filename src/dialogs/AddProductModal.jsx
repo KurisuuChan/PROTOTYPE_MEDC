@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import { PlusCircle, X, Plus, Trash2 } from "lucide-react";
-import { useNotification } from "@/hooks/useNotification";
+import { useNotification } from "@/hooks/useNotifications";
 import { useAddProduct } from "@/hooks/useAddProduct";
 
 const productCategories = [
