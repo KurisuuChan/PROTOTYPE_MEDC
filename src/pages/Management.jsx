@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { usePagination } from "@/hooks/usePagination.jsx";
-import { useNotification } from "@/hooks/useNotification";
+import { useNotification } from "@/hooks/useNotifications"; // Corrected import path
 import { useManagement } from "@/hooks/useManagement";
 
 import AddProductModal from "@/dialogs/AddProductModal";

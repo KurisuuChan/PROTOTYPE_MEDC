@@ -65,11 +65,14 @@ const Financials = () => {
               <Archive className="w-8 h-8 text-orange-500" />
             </div>
             <div>
-              <p className="text-gray-500 text-sm">
-                Total Inventory Value (at Cost)
+              <p className="text-gray-600 font-medium">
+                Inventory Value (at Cost)
               </p>
               <p className="text-3xl font-bold text-gray-800">
                 ₱{stats.totalInventoryValue.toFixed(2)}
+              </p>
+              <p className="text-xs text-gray-500">
+                Total cost of all products currently in stock.
               </p>
             </div>
           </div>
@@ -78,9 +81,12 @@ const Financials = () => {
               <Landmark className="w-8 h-8 text-green-500" />
             </div>
             <div>
-              <p className="text-gray-500 text-sm">Total Lifetime Profit</p>
+              <p className="text-gray-600 font-medium">Net Profit (All Time)</p>
               <p className="text-3xl font-bold text-gray-800">
                 ₱{stats.totalProfit.toFixed(2)}
+              </p>
+              <p className="text-xs text-gray-500">
+                Total profit from all completed sales.
               </p>
             </div>
           </div>
@@ -89,7 +95,7 @@ const Financials = () => {
         <div className="border border-gray-200 p-6 rounded-xl">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <TrendingUp className="text-indigo-500" />
-            Monthly Profit Trend (Estimated)
+            Monthly Profit Trend
           </h2>
           <MonthlySalesChart
             data={monthlyProfitData.map((d) => ({
@@ -117,9 +123,9 @@ const Financials = () => {
                     Total Revenue
                   </th>
                   <th className="py-3 px-4 text-right text-sm font-semibold text-gray-500">
-                    Total Profit
+                    Net Profit
                   </th>
-                  <th className="py-3 px-4 text-right text-sm font-semibold text-gray-500">
+                  <th className="py-3 px-4 text-right text-sm font-semibold text-gray-500 w-40">
                     Profit Margin
                   </th>
                 </tr>
@@ -143,8 +149,22 @@ const Financials = () => {
                     >
                       ₱{item.profit.toFixed(2)}
                     </td>
-                    <td className="py-4 px-4 text-right text-sm text-blue-600 font-semibold">
-                      {item.margin.toFixed(1)}%
+                    <td className="py-4 px-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="font-semibold text-sm w-12 text-blue-600">
+                          {item.margin.toFixed(1)}%
+                        </span>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full ${
+                              item.margin > 50 ? "bg-green-500" : "bg-blue-500"
+                            }`}
+                            style={{
+                              width: `${item.margin > 0 ? item.margin : 0}%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ))}

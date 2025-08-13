@@ -1,7 +1,7 @@
 // src/pages/NotificationHistory.jsx
 import React from "react";
 import PropTypes from "prop-types";
-import useNotifications from "@/hooks/useNotifications";
+import { useNotificationHistory } from "@/hooks/useNotifications";
 import { Link } from "react-router-dom";
 import { Bell, Loader2 } from "lucide-react";
 import { getAccentClass, iconForType } from "@/utils/notifications";
@@ -13,7 +13,9 @@ const NotificationItem = ({ item, onMarkAsRead }) => (
     onClick={() => onMarkAsRead(item.id)}
     className={`flex items-start gap-4 p-4 transition-colors group ${getAccentClass(
       item.category
-    )} ${!item.read ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-gray-50"}`}
+    )} ${
+      !item.read ? "bg-blue-50 hover:bg-blue-100" : "bg-white hover:bg-gray-50"
+    }`}
   >
     <div className={`flex-shrink-0 p-3 rounded-full ${item.iconBg}`}>
       {iconForType(item.iconType)}
@@ -50,7 +52,7 @@ NotificationItem.propTypes = {
 
 const NotificationHistory = () => {
   const { allNotifications, loading, groupedByDate, markAsRead } =
-    useNotifications();
+    useNotificationHistory();
 
   const renderContent = () => {
     if (loading) {

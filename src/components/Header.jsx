@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Search, Bell, User, ChevronDown, LogOut } from "lucide-react";
-import useNotifications from "@/hooks/useNotifications";
+import { useNotificationHistory } from "@/hooks/useNotifications.jsx";
 import NotificationsDropdown from "./notifications/NotificationsDropdown";
 
 const Header = ({ handleLogout, user }) => {
@@ -22,9 +22,8 @@ const Header = ({ handleLogout, user }) => {
     categoryCounts,
     groupedByDate,
     markAsRead,
-    markAllAsRead,
     dismiss,
-  } = useNotifications();
+  } = useNotificationHistory();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -101,7 +100,6 @@ const Header = ({ handleLogout, user }) => {
             </button>
             <NotificationsDropdown
               isOpen={notificationsOpen}
-              unreadCount={unreadCount}
               notifications={notifications}
               loading={loading}
               categories={categories}
@@ -111,7 +109,6 @@ const Header = ({ handleLogout, user }) => {
               setSearch={setSearch}
               mutedCategories={mutedCategories}
               toggleMuteCategory={toggleMuteCategory}
-              onMarkAllAsRead={markAllAsRead}
               onMarkAsRead={markAsRead}
               onDismiss={dismiss}
               onMarkCategoryAsRead={handleMarkCategoryAsRead}

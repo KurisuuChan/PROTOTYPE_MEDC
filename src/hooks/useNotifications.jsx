@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useContext } from "react";
 import { supabase } from "@/supabase/client";
+import { NotificationContext } from "@/context/NotificationContext";
 import {
   getDismissedNotificationIds,
   getNotificationSettings,
@@ -11,6 +12,19 @@ import {
   getLowStockTimestamps,
   setLowStockTimestamps,
 } from "@/utils/notificationStorage";
+
+// HOOK 1: For Showing UI Toasts (Pop-up Messages)
+export const useNotification = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error(
+      "useNotification must be used within a NotificationProvider"
+    );
+  }
+  return context;
+};
+
+// HOOK 2: For Managing the Notification History (Bell Icon)
 
 /**
  * Generates system notifications from localStorage.
@@ -129,7 +143,7 @@ const generateStockNotifications = (product, settings, readIds, timestamps) => {
   return { notifications, wasUpdated };
 };
 
-export default function useNotifications() {
+export function useNotificationHistory() {
   const [notifications, setNotifications] = useState([]);
   const [allNotifications, setAllNotifications] = useState([]);
   const [loading, setLoading] = useState(true);

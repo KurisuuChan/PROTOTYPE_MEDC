@@ -1,7 +1,7 @@
 // src/hooks/useFinancialsData.jsx
 import { useState, useEffect, useCallback } from "react";
 import * as api from "@/services/api";
-import { useNotification } from "@/hooks/useNotification";
+import { useNotification } from "@/hooks/useNotifications";
 
 export const useFinancialsData = () => {
   const [stats, setStats] = useState({
@@ -32,18 +32,39 @@ export const useFinancialsData = () => {
         await api.getAllSaleItems();
       if (saleItemsError) throw saleItemsError;
 
+      // Calculate total profit and group profit by month accurately
+      const monthlyProfit = Array(12).fill(0);
       const totalProfit = saleItems.reduce((acc, item) => {
-        // Safely access product data
         if (!item.products) return acc;
+
         const cost = item.products.cost_price || 0;
         const revenue = item.price_at_sale;
         const profitPerItem = revenue - cost;
-        return acc + profitPerItem * item.quantity;
+        const totalItemProfit = profitPerItem * item.quantity;
+
+        // Add to monthly profit calculation using optional chaining
+        if (item.sales?.created_at) {
+          const month = new Date(item.sales.created_at).getMonth();
+          monthlyProfit[month] += totalItemProfit;
+        }
+
+        return acc + totalItemProfit;
       }, 0);
 
-      // Group sales by product name to get profitability for sold items only
+      const generatedMonthlyProfit = Array.from({ length: 12 }, (_, i) => {
+        const monthName = new Date(0, i).toLocaleString("default", {
+          month: "short",
+        });
+        return {
+          month: monthName,
+          profit: monthlyProfit[i] || 0,
+        };
+      });
+      setMonthlyProfitData(generatedMonthlyProfit);
+
+      // Group sales by product name for profitability table
       const salesByProduct = saleItems.reduce((acc, item) => {
-        if (!item.products) return acc; // Skip items with no product data
+        if (!item.products) return acc;
         const name = item.products.name;
         if (!acc[name]) {
           acc[name] = {
@@ -74,30 +95,6 @@ export const useFinancialsData = () => {
         .sort((a, b) => b.profit - a.profit);
 
       setProductProfitability(profitability);
-
-      // Fetch sales for monthly profit chart
-      const { data: sales, error: salesError } = await api.getSales();
-      if (salesError) throw salesError;
-
-      const monthlyProfit = sales.reduce((acc, sale) => {
-        const month = new Date(sale.created_at).getMonth();
-        // This is an approximation of profit per sale.
-        const estimatedProfit = sale.total_amount * 0.4;
-        acc[month] = (acc[month] || 0) + estimatedProfit;
-        return acc;
-      }, {});
-
-      const generatedMonthlyProfit = Array.from({ length: 12 }, (_, i) => {
-        const monthName = new Date(0, i).toLocaleString("default", {
-          month: "short",
-        });
-        return {
-          month: monthName,
-          profit: monthlyProfit[i] || 0,
-        };
-      });
-
-      setMonthlyProfitData(generatedMonthlyProfit);
       setStats({ totalInventoryValue, totalProfit });
     } catch (error) {
       console.error("Error fetching financial data:", error);

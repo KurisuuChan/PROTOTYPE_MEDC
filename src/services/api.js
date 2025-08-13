@@ -1,3 +1,4 @@
+// src/services/api.js
 import { supabase } from "@/supabase/client";
 
 // ADDED EXPORT
@@ -136,11 +137,12 @@ export const getRecentSaleItems = () =>
     .order("id", { ascending: false })
     .limit(5);
 
-// ... in api.js
 export const getAllSaleItems = () =>
   supabase
     .from("sale_items")
-    .select("quantity, price_at_sale, products (name, category, cost_price)"); // This line is causing the error
+    .select(
+      "quantity, price_at_sale, sales(created_at), products (name, category, cost_price)"
+    );
 
 // Branding
 export const getBranding = () =>
@@ -167,3 +169,20 @@ export const uploadFile = (bucket, path, file) =>
   supabase.storage.from(bucket).upload(path, file);
 export const getPublicUrl = (bucket, path) =>
   supabase.storage.from(bucket).getPublicUrl(path);
+
+// Financials
+export const resetFinancials = async () => {
+  const { error: itemsError } = await supabase
+    .from("sale_items")
+    .delete()
+    .gt("id", 0);
+  if (itemsError) return { error: itemsError };
+
+  const { error: salesError } = await supabase
+    .from("sales")
+    .delete()
+    .gt("id", 0);
+  if (salesError) return { error: salesError };
+
+  return { error: null };
+};

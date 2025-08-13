@@ -14,10 +14,12 @@ import {
   AlertTriangle,
   Clock,
 } from "lucide-react";
-import { useNotification } from "@/hooks/useNotification";
+import { useNotification } from "@/hooks/useNotifications"; // Corrected import path
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { usePagination } from "@/hooks/usePagination.jsx";
 import { useArchivedProducts } from "@/hooks/useArchivedProducts";
+
+// ... (rest of the file is unchanged)
 
 // A reusable confirmation modal with improved styling and prop validation
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
