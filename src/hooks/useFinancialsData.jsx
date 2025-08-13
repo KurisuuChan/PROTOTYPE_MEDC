@@ -1,6 +1,7 @@
 // src/hooks/useFinancialsData.jsx
 import { useState, useEffect, useCallback } from "react";
 import * as api from "@/services/api";
+import { useNotification } from "@/hooks/useNotification";
 
 export const useFinancialsData = () => {
   const [stats, setStats] = useState({
@@ -11,6 +12,7 @@ export const useFinancialsData = () => {
   const [productProfitability, setProductProfitability] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { addNotification } = useNotification();
 
   const fetchFinancialsData = useCallback(async () => {
     setLoading(true);
@@ -39,25 +41,34 @@ export const useFinancialsData = () => {
         return acc + profitPerItem * item.quantity;
       }, 0);
 
-      const profitability = products
+      // Group sales by product name to get profitability for sold items only
+      const salesByProduct = saleItems.reduce((acc, item) => {
+        if (!item.products) return acc; // Skip items with no product data
+        const name = item.products.name;
+        if (!acc[name]) {
+          acc[name] = {
+            name: name,
+            cost_price: item.products.cost_price || 0,
+            totalSold: 0,
+            totalRevenue: 0,
+          };
+        }
+        acc[name].totalSold += item.quantity;
+        acc[name].totalRevenue += item.price_at_sale * item.quantity;
+        return acc;
+      }, {});
+
+      const profitability = Object.values(salesByProduct)
         .map((product) => {
-          // Safely filter sale items
-          const sales = saleItems.filter(
-            (item) => item.products && item.products.name === product.name
-          );
-          const totalSold = sales.reduce((acc, item) => acc + item.quantity, 0);
-          const totalRevenue = sales.reduce(
-            (acc, item) => acc + item.price_at_sale * item.quantity,
-            0
-          );
-          const totalCost = totalSold * (product.cost_price || 0);
-          const profit = totalRevenue - totalCost;
+          const totalCost = product.totalSold * product.cost_price;
+          const profit = product.totalRevenue - totalCost;
           return {
-            name: product.name,
-            totalSold,
-            totalRevenue,
+            ...product,
             profit,
-            margin: totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0,
+            margin:
+              product.totalRevenue > 0
+                ? (profit / product.totalRevenue) * 100
+                : 0,
           };
         })
         .sort((a, b) => b.profit - a.profit);
@@ -71,8 +82,6 @@ export const useFinancialsData = () => {
       const monthlyProfit = sales.reduce((acc, sale) => {
         const month = new Date(sale.created_at).getMonth();
         // This is an approximation of profit per sale.
-        // A more accurate calculation would sum profit from sale_items for each sale.
-        // For now, we assume a flat 40% margin for the chart for simplicity.
         const estimatedProfit = sale.total_amount * 0.4;
         acc[month] = (acc[month] || 0) + estimatedProfit;
         return acc;
@@ -98,6 +107,16 @@ export const useFinancialsData = () => {
     }
   }, []);
 
+  const handleResetFinancials = async () => {
+    const { error: resetError } = await api.resetFinancials();
+    if (resetError) {
+      addNotification(`Error: ${resetError.message}`, "error");
+    } else {
+      addNotification("Financial records have been reset.", "success");
+      fetchFinancialsData(); // Refresh the data
+    }
+  };
+
   useEffect(() => {
     fetchFinancialsData();
   }, [fetchFinancialsData]);
@@ -109,5 +128,6 @@ export const useFinancialsData = () => {
     loading,
     error,
     fetchFinancialsData,
+    handleResetFinancials,
   };
 };
