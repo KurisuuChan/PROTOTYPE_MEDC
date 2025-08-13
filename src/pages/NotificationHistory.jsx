@@ -13,9 +13,7 @@ const NotificationItem = ({ item, onMarkAsRead }) => (
     onClick={() => onMarkAsRead(item.id)}
     className={`flex items-start gap-4 p-4 transition-colors group ${getAccentClass(
       item.category
-    )} ${
-      !item.read ? "bg-blue-50 hover:bg-blue-100" : "bg-white hover:bg-gray-50"
-    }`}
+    )} ${!item.read ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-gray-50"}`}
   >
     <div className={`flex-shrink-0 p-3 rounded-full ${item.iconBg}`}>
       {iconForType(item.iconType)}
@@ -76,11 +74,14 @@ const NotificationHistory = () => {
     return (
       <div className="space-y-6">
         {groupedByDate.map(({ date, items }) => (
-          <div key={date} className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 pb-3 border-b border-gray-200">
+          <div
+            key={date}
+            className="border border-gray-200 rounded-xl overflow-hidden"
+          >
+            <h3 className="text-sm font-bold text-gray-600 p-4 bg-gray-50 border-b border-gray-200">
               {date}
             </h3>
-            <div className="divide-y divide-gray-100 -mx-6">
+            <div className="divide-y divide-gray-100">
               {items.map((item) => (
                 <NotificationItem
                   key={item.id}
@@ -96,7 +97,7 @@ const NotificationHistory = () => {
   };
 
   return (
-    <div>
+    <div className="bg-white p-8 rounded-2xl shadow-lg">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-lg bg-blue-100">
