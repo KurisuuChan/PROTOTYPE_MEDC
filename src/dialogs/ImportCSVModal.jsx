@@ -5,6 +5,87 @@ import { UploadCloud, FileText, X, Download } from "lucide-react";
 import { useNotification } from "@/hooks/useNotification";
 import { addSystemNotification } from "@/utils/notificationStorage";
 
+// Helper to create a single variant entry
+const createVariantEntry = (unitType, price, units, isDefault = false) => {
+  if (price && Number(price) > 0) {
+    return {
+      unit_type: unitType,
+      unit_price: Number(price),
+      units_per_variant: Number(units) || 1,
+      is_default: isDefault,
+    };
+  }
+  return null;
+};
+
+// Helper to generate a unique Medicine ID
+const generateMedicineId = (nextId, productType, datePart) => {
+  const typePart = productType === "Medicine" ? "1" : "0";
+  return `${datePart}${typePart}${nextId}`;
+};
+
+// Helper to parse a single line from the CSV into a product and its variants
+const parseCsvLine = (line, headers, startingId, datePart) => {
+  if (!line) return null;
+
+  const values = line.split(",");
+  const entry = {};
+  headers.forEach((header, index) => {
+    const value = values[index] ? values[index].trim() : null;
+    entry[header] = value;
+  });
+
+  const medicineId = generateMedicineId(
+    startingId,
+    entry.productType,
+    datePart
+  );
+  const numericQty = Number(entry.quantity) || 0;
+
+  // Create variants from CSV data
+  const variants = [
+    createVariantEntry("box", entry.boxPrice, entry.boxUnits),
+    createVariantEntry("sheet", entry.sheetPrice, entry.sheetUnits),
+    createVariantEntry("piece", entry.piecePrice, entry.pieceUnits),
+  ].filter(Boolean); // Remove null entries
+
+  // Fallback to main price if piecePrice is not provided
+  if (!entry.piecePrice && entry.price) {
+    variants.push(createVariantEntry("piece", entry.price, 1));
+  }
+
+  // Ensure one variant is default
+  if (variants.length > 0) {
+    const pieceVariant = variants.find((v) => v.unit_type === "piece");
+    if (pieceVariant) {
+      pieceVariant.is_default = true;
+    } else {
+      variants[0].is_default = true; // Default to the first available variant
+    }
+  }
+
+  const defaultPrice =
+    Number(variants.find((v) => v.is_default)?.unit_price || entry.price) || 0;
+
+  const productData = {
+    product: {
+      name: entry.name,
+      category: entry.category,
+      quantity: numericQty,
+      price: defaultPrice,
+      cost_price: Number(entry.cost_price) || 0,
+      expireDate: entry.expireDate,
+      productType: entry.productType,
+      description: entry.description,
+      medicineId: medicineId,
+      status: numericQty > 0 ? "Available" : "Unavailable",
+    },
+    variants: variants,
+  };
+
+  return productData;
+};
+
 const ImportCSVModal = ({ isOpen, onClose, onImportSuccess }) => {
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("");
@@ -25,206 +106,22 @@ const ImportCSVModal = ({ isOpen, onClose, onImportSuccess }) => {
     }
   };
 
-  const generateMedicineId = (nextId, productType, datePart) => {
-    const typePart = productType === "Medicine" ? "1" : "0";
-    return `${datePart}${typePart}${nextId}`;
-  };
-
-  const parseAndPrepareData = (csvText, startingId) => {
+  const parseProductsWithVariants = (csvText, startingId) => {
     const lines = csvText.split(/\r\n|\n/).filter((line) => line.trim() !== "");
     if (lines.length <= 1) return [];
 
-    const headers = lines[0].split(",").map((header) => header.trim());
-    const data = [];
+    const headers = lines[0].split(",").map((h) => h.trim());
+    const productLines = lines.slice(1);
     const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const year = today.getFullYear();
-    const datePart = `${month}${day}${year}`;
+    const datePart = `${String(today.getMonth() + 1).padStart(2, "0")}${String(
+      today.getDate()
+    ).padStart(2, "0")}${today.getFullYear()}`;
 
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i]) continue;
-      const values = lines[i].split(",");
-      const entry = {};
-      headers.forEach((header, index) => {
-        const value = values[index] ? values[index].trim() : null;
-        if (["quantity", "price"].includes(header) && value) {
-          entry[header] = Number(value);
-        } else {
-          entry[header] = value;
-        }
-      });
-
-      const nextId = startingId + i - 1;
-      entry.medicineId = generateMedicineId(
-        nextId,
-        entry.productType,
-        datePart
-      );
-      entry.status = "Available";
-
-      data.push(entry);
-    }
-    return data;
-  };
-
-  const createVariantEntry = (productId, unitType, price, units, isDefault) => {
-    if (price && price > 0) {
-      return {
-        product_id: productId, // Can be null initially
-        unit_type: unitType,
-        unit_price: Number(price),
-        units_per_variant: units || 1,
-        is_default: isDefault,
-      };
-    }
-    return null;
-  };
-
-  const parseVariantsData = (csvText) => {
-    const lines = csvText.split(/\r\n|\n/).filter((line) => line.trim() !== "");
-    if (lines.length <= 1) return { products: [], variants: [] };
-
-    const headers = lines[0].split(",").map((header) => header.trim());
-    const products = [];
-    const variants = [];
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const year = today.getFullYear();
-    const datePart = `${month}${day}${year}`;
-
-    for (let i = 1; i < lines.length; i++) {
-      if (!lines[i]) continue;
-      const values = lines[i].split(",");
-      const entry = {};
-      headers.forEach((header, index) => {
-        const value = values[index] ? values[index].trim() : null;
-        if (["quantity", "price"].includes(header) && value) {
-          entry[header] = Number(value);
-        } else {
-          entry[header] = value;
-        }
-      });
-
-      const medicineId = generateMedicineId(i, entry.productType, datePart);
-
-      // Create product entry
-      const numericQty = Number(entry.quantity) || 0;
-      const productEntry = {
-        name: entry.name,
-        category: entry.category,
-        quantity: numericQty,
-        price: entry.price || 0,
-        expireDate: entry.expireDate,
-        productType: entry.productType,
-        description: entry.description,
-        medicineId: medicineId,
-        status: numericQty > 0 ? "Available" : "Unavailable",
-      };
-      products.push(productEntry);
-
-      // Create variants (we'll set product_id after insertion)
-      const boxVariant = createVariantEntry(
-        null, // Will be set after product insertion
-        "box",
-        entry.boxPrice,
-        entry.boxUnits,
-        false
-      );
-      const sheetVariant = createVariantEntry(
-        null, // Will be set after product insertion
-        "sheet",
-        entry.sheetPrice,
-        entry.sheetUnits,
-        false
-      );
-      const pieceVariant = createVariantEntry(
-        null, // Will be set after product insertion
-        "piece",
-        entry.piecePrice,
-        entry.pieceUnits,
-        true
-      );
-
-      if (boxVariant) variants.push(boxVariant);
-      if (sheetVariant) variants.push(sheetVariant);
-      if (pieceVariant) {
-        variants.push(pieceVariant);
-      } else if (entry.price && entry.price > 0) {
-        // Use main price as piece price if no specific piece price
-        variants.push(createVariantEntry(null, "piece", entry.price, 1, true));
-      }
-    }
-
-    return { products, variants };
-  };
-
-  const insertProductsAndVariants = async (
-    productsToInsert,
-    variantsToInsert
-  ) => {
-    // Insert products first and get their IDs
-    const { data: insertedProducts, error: insertError } = await supabase
-      .from("products")
-      .insert(productsToInsert)
-      .select("id");
-
-    if (insertError) {
-      throw insertError;
-    }
-
-    // Insert variants if they exist, using the actual product IDs
-    if (variantsToInsert.length > 0) {
-      // Create a map of product index to product ID
-      const productIdMap = {};
-      productsToInsert.forEach((product, index) => {
-        productIdMap[index] = insertedProducts[index].id;
-      });
-
-      // Update variant product_ids using the map
-      const updatedVariants = variantsToInsert.map((variant, index) => {
-        // Find which product this variant belongs to
-        // Since variants are created in order for each product, we can calculate this
-        const productIndex = Math.floor(index / 3); // Each product has max 3 variants
-        return {
-          ...variant,
-          product_id: productIdMap[productIndex],
-        };
-      });
-
-      const { error: variantsError } = await supabase
-        .from("product_variants")
-        .insert(updatedVariants);
-
-      if (variantsError) {
-        throw variantsError;
-      }
-    }
-  };
-
-  const createSuccessNotification = (productsCount, variantsCount) => {
-    const description = `${productsCount} products were successfully imported${
-      variantsCount > 0 ? ` with ${variantsCount} pricing variants` : ""
-    }.`;
-
-    addSystemNotification({
-      id: `csv-${Date.now()}`,
-      iconType: "upload",
-      iconBg: "bg-green-100",
-      title: "CSV Import Successful",
-      category: "System",
-      description,
-      createdAt: new Date().toISOString(),
-      path: "/management",
-    });
-
-    addNotification(
-      `${productsCount} products imported successfully!${
-        variantsCount > 0 ? ` (${variantsCount} variants)` : ""
-      }`,
-      "success"
-    );
+    return productLines
+      .map((line, index) =>
+        parseCsvLine(line, headers, startingId + index, datePart)
+      )
+      .filter(Boolean);
   };
 
   const handleImport = async () => {
@@ -247,40 +144,59 @@ const ImportCSVModal = ({ isOpen, onClose, onImportSuccess }) => {
           .single();
 
         if (fetchError && fetchError.code !== "PGRST116") {
+          // Ignore "PGRST116" which means no rows found (table is empty)
           throw fetchError;
         }
 
         const nextId = lastProduct ? lastProduct.id + 1 : 1;
-
-        // Check if CSV has variant columns
         const csvText = event.target.result;
-        const hasVariants =
-          csvText.includes("boxPrice") ||
-          csvText.includes("sheetPrice") ||
-          csvText.includes("piecePrice");
 
-        let productsToInsert, variantsToInsert;
+        const productsToProcess = parseProductsWithVariants(csvText, nextId);
 
-        if (hasVariants) {
-          const parsedData = parseVariantsData(csvText);
-          productsToInsert = parsedData.products;
-          variantsToInsert = parsedData.variants;
-        } else {
-          // Fallback to old format
-          productsToInsert = parseAndPrepareData(csvText, nextId);
-          variantsToInsert = [];
-        }
-
-        if (productsToInsert.length === 0) {
+        if (productsToProcess.length === 0) {
           setError("CSV file is empty or invalid.");
           setLoading(false);
           return;
         }
 
-        await insertProductsAndVariants(productsToInsert, variantsToInsert);
-        createSuccessNotification(
-          productsToInsert.length,
-          variantsToInsert.length
+        // Insert products and then their variants
+        for (const item of productsToProcess) {
+          const { data: insertedProduct, error: productError } = await supabase
+            .from("products")
+            .insert(item.product)
+            .select("id")
+            .single();
+
+          if (productError) throw productError;
+
+          if (item.variants.length > 0) {
+            const variantsToInsert = item.variants.map((v) => ({
+              ...v,
+              product_id: insertedProduct.id,
+            }));
+
+            const { error: variantsError } = await supabase
+              .from("product_variants")
+              .insert(variantsToInsert);
+
+            if (variantsError) throw variantsError;
+          }
+        }
+
+        addSystemNotification({
+          id: `csv-${Date.now()}`,
+          iconType: "upload",
+          iconBg: "bg-green-100",
+          title: "CSV Import Successful",
+          category: "System",
+          description: `${productsToProcess.length} products were successfully imported.`,
+          createdAt: new Date().toISOString(),
+          path: "/management",
+        });
+
+        addNotification(
+          `${productsToProcess.length} products imported successfully!`,
+          "success"
         );
 
         onImportSuccess();
@@ -297,10 +213,10 @@ const ImportCSVModal = ({ isOpen, onClose, onImportSuccess }) => {
   };
 
   const downloadTemplate = () => {
-    const csvContent = `name,category,quantity,price,expireDate,productType,description,boxPrice,boxUnits,sheetPrice,sheetUnits,piecePrice,pieceUnits
-Paracetamol 500mg,Pain Relief,100,5.00,2025-12-31,Medicine,Generic pain reliever,45.00,10,9.00,2,5.00,1
-Amoxicillin 250mg,Prescription,50,8.50,2025-06-30,Medicine,Antibiotic,76.50,9,17.00,2,8.50,1
-Vitamin C 1000mg,Vitamins & Supplements,200,3.00,2026-01-31,Supplement,Immune support,27.00,9,6.00,2,3.00,1`;
+    const csvContent = `name,category,quantity,price,cost_price,expireDate,productType,description,boxPrice,boxUnits,sheetPrice,sheetUnits,piecePrice,pieceUnits
+Paracetamol 500mg,Pain Relief,100,5.00,2.50,2025-12-31,Medicine,Generic pain reliever,45.00,10,9.00,2,5.00,1
+Amoxicillin 250mg,Prescription,50,8.50,4.00,2025-06-30,Medicine,Antibiotic,76.50,9,17.00,2,8.50,1
+Vitamin C 1000mg,Vitamins & Supplements,200,3.00,1.20,2026-01-31,Supplement,Immune support,27.00,9,6.00,2,3.00,1`;
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -355,17 +271,12 @@ Vitamin C 1000mg,Vitamins & Supplements,200,3.00,2026-01-31,Supplement,Immune su
           </div>
 
           <p className="text-sm text-gray-600">
-            <strong>New Format:</strong> Include columns for variant pricing:{" "}
-            <code>boxPrice</code>, <code>boxUnits</code>,{" "}
-            <code>sheetPrice</code>, <code>sheetUnits</code>,{" "}
-            <code>piecePrice</code>, <code>pieceUnits</code>
-          </p>
-
-          <p className="text-sm text-gray-600">
-            <strong>Legacy Format:</strong> Basic columns: <code>name</code>,{" "}
-            <code>category</code>, <code>quantity</code>, <code>price</code>,{" "}
-            <code>expireDate</code>, <code>productType</code>,{" "}
-            <code>description</code>
+            <strong>Columns:</strong> <code>name</code>, <code>category</code>,{" "}
+            <code>quantity</code>, <code>price</code> (for default/piece),{" "}
+            <code>cost_price</code>, <code>expireDate</code>,{" "}
+            <code>productType</code>, <code>description</code>, and optional
+            variant columns like <code>boxPrice</code>, <code>sheetPrice</code>,
+            etc.
           </p>
 
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">

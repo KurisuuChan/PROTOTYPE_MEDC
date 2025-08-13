@@ -135,10 +135,12 @@ export const getRecentSaleItems = () =>
     .select("*, products(name), sales(created_at)")
     .order("id", { ascending: false })
     .limit(5);
+
+// ... in api.js
 export const getAllSaleItems = () =>
   supabase
     .from("sale_items")
-    .select("quantity, price_at_sale, products (name, category)");
+    .select("quantity, price_at_sale, products (name, category, cost_price)"); // This line is causing the error
 
 // Branding
 export const getBranding = () =>

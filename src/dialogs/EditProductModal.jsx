@@ -26,21 +26,22 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
   const { addNotification } = useNotification();
 
   useEffect(() => {
-    setFormData(product);
-    setError("");
-
-    // Fetch variants for this product
-    if (product?.id) {
-      const fetchVariants = async () => {
-        const { data: variantData } = await supabase
-          .from("product_variants")
-          .select("*")
-          .eq("product_id", product.id)
-          .order("unit_type");
-
-        setVariants(variantData || []);
-      };
-      fetchVariants();
+    // When the product prop changes, update the form data
+    if (product) {
+      setFormData(product);
+      setError("");
+      // Fetch variants for this product
+      if (product.id) {
+        const fetchVariants = async () => {
+          const { data: variantData } = await supabase
+            .from("product_variants")
+            .select("*")
+            .eq("product_id", product.id)
+            .order("unit_type");
+          setVariants(variantData || []);
+        };
+        fetchVariants();
+      }
     }
   }, [product]);
 
@@ -54,17 +55,21 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
     setLoading(true);
     setError("");
 
-    const { id, ...updateData } = formData;
-    // Enforce status from quantity for consistency
-    const safeQuantity = parseInt(updateData.quantity, 10) || 0;
-    updateData.quantity = safeQuantity;
-    updateData.status = safeQuantity > 0 ? "Available" : "Unavailable";
+    // Create a mutable copy and remove properties that shouldn't be updated.
+    const updateData = { ...formData };
+    delete updateData.product_variants; // Remove nested variant data
+    const id = updateData.id; // Store the id separately
+    delete updateData.id; // Remove id from the update payload
+
+    // Ensure quantity is a number
+    updateData.quantity = parseInt(updateData.quantity, 10) || 0;
+
     const originalPrice = product?.price;
 
     const { error: updateError } = await supabase
       .from("products")
-      .update(updateData)
-      .eq("id", id);
+      .update(updateData) // Use the cleaned updateData object
+      .eq("id", id); // Use the stored id to find the correct row
 
     if (updateError) {
       console.error("Error updating product:", updateError);
@@ -72,7 +77,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
       addNotification("Failed to update product.", "error");
     } else {
       addNotification("Product updated successfully!", "success");
-      // If price changed, add a system notification for the header feed
+      // If price changed, add a system notification
       if (
         typeof originalPrice !== "undefined" &&
         typeof updateData.price !== "undefined" &&
@@ -84,7 +89,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
           iconBg: "bg-blue-100",
           title: "Price Updated",
           category: "System",
-          description: `Price changed from ${originalPrice} to ${
+          description: `Price changed from ₱${originalPrice} to ₱${
             updateData.price
           } for ${updateData.name || product.name}.`,
           createdAt: new Date().toISOString(),
@@ -145,7 +150,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                     id="edit-product-name"
                     type="text"
                     name="name"
-                    value={formData.name}
+                    value={formData.name || ""}
                     onChange={handleChange}
                     placeholder="Enter product name"
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -162,7 +167,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                   <select
                     id="edit-product-category"
                     name="category"
-                    value={formData.category}
+                    value={formData.category || ""}
                     onChange={handleChange}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -180,7 +185,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
               <h3 className="font-semibold text-green-900 mb-3">
                 Pricing & Inventory
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label
                     htmlFor="edit-product-price"
@@ -192,7 +197,26 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                     id="edit-product-price"
                     type="number"
                     name="price"
-                    value={formData.price}
+                    value={formData.price || ""}
+                    onChange={handleChange}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="edit-product-cost-price"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Cost Price (₱)
+                  </label>
+                  <input
+                    id="edit-product-cost-price"
+                    type="number"
+                    name="cost_price"
+                    value={formData.cost_price || ""}
                     onChange={handleChange}
                     placeholder="0.00"
                     step="0.01"
@@ -211,7 +235,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                     id="edit-product-quantity"
                     type="number"
                     name="quantity"
-                    value={formData.quantity}
+                    value={formData.quantity || ""}
                     onChange={handleChange}
                     placeholder="0"
                     min="0"
@@ -237,7 +261,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                     id="edit-product-expire-date"
                     type="date"
                     name="expireDate"
-                    value={formData.expireDate}
+                    value={formData.expireDate || ""}
                     onChange={handleChange}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -252,7 +276,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                   <select
                     id="edit-product-type"
                     name="productType"
-                    value={formData.productType}
+                    value={formData.productType || ""}
                     onChange={handleChange}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -272,7 +296,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                 <select
                   id="edit-product-status"
                   name="status"
-                  value={formData.status}
+                  value={formData.status || ""}
                   onChange={handleChange}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -286,7 +310,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
             {variants.length > 0 && (
               <div className="mt-6">
                 <p className="text-sm font-medium text-gray-500 mb-3">
-                  Pricing Variants
+                  Pricing Variants (Read-Only)
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {variants.map((variant) => (
@@ -319,10 +343,6 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Note: Variant prices can be edited in the Add Product modal
-                  when creating new products.
-                </p>
               </div>
             )}
           </div>
@@ -351,7 +371,7 @@ const EditProductModal = ({ isOpen, onClose, product, onProductUpdated }) => {
 EditProductModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  product: PropTypes.object.isRequired,
+  product: PropTypes.object,
   onProductUpdated: PropTypes.func.isRequired,
 };
 

@@ -59,18 +59,8 @@ export const useManagement = (addNotification) => {
     }
   }, [location.search, navigate]);
 
-  const normalizedProducts = useMemo(() => {
-    return (products || []).map((product) => ({
-      ...product,
-      status:
-        product.quantity <= 0 && product.status !== "Archived"
-          ? "Unavailable"
-          : product.status,
-    }));
-  }, [products]);
-
   const filteredProducts = useMemo(() => {
-    return normalizedProducts.filter((product) => {
+    return (products || []).filter((product) => {
       const statusMatch =
         activeFilters.status === "All" ||
         product.status === activeFilters.status;
@@ -79,7 +69,7 @@ export const useManagement = (addNotification) => {
         product.productType === activeFilters.productType;
       return statusMatch && typeMatch;
     });
-  }, [normalizedProducts, activeFilters]);
+  }, [products, activeFilters]);
 
   const handleArchiveSelected = async () => {
     if (selectedItems.length === 0) return;

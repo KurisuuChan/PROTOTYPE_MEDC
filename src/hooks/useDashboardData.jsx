@@ -6,8 +6,8 @@ import {
   ShieldAlert,
   ShieldX,
   Pill,
-  TrendingUp,
   PackageX,
+  TrendingUp,
 } from "lucide-react";
 
 const getInventoryStatus = (products) => {
@@ -63,10 +63,10 @@ export const useDashboardData = () => {
       iconBg: "bg-sky-100",
     },
     {
-      title: "Total Inventory Value",
+      title: "Total Profit",
       value: "₱0",
-      icon: <TrendingUp className="text-amber-500" />,
-      iconBg: "bg-amber-100",
+      icon: <TrendingUp className="text-green-500" />,
+      iconBg: "bg-green-100",
     },
     {
       title: "Out of Stock",
@@ -97,10 +97,7 @@ export const useDashboardData = () => {
         (p) => p.status === "Available" && p.quantity > 0
       ).length;
       const outOfStock = products.filter((p) => p.quantity === 0).length;
-      const totalValue = products.reduce(
-        (acc, p) => acc + (p.price || 0) * (p.quantity || 0),
-        0
-      );
+
       setLowStockItems(
         products.filter((p) => p.quantity > 0 && p.quantity <= 10).slice(0, 5)
       );
@@ -138,6 +135,13 @@ export const useDashboardData = () => {
       const { data: saleItems, error: saleItemsError } =
         await api.getAllSaleItems();
       if (saleItemsError) throw saleItemsError;
+
+      const totalProfit = saleItems.reduce((acc, item) => {
+        const cost = item.products.cost_price || 0;
+        const revenue = item.price_at_sale;
+        const profitPerItem = revenue - cost;
+        return acc + profitPerItem * item.quantity;
+      }, 0);
 
       const categorySales = saleItems.reduce((acc, item) => {
         const category = item.products.category || "Uncategorized";
@@ -181,10 +185,10 @@ export const useDashboardData = () => {
           iconBg: "bg-sky-100",
         },
         {
-          title: "Total Inventory Value",
-          value: `₱${totalValue.toFixed(2)}`,
-          icon: <TrendingUp className="text-amber-500" />,
-          iconBg: "bg-amber-100",
+          title: "Total Profit",
+          value: `₱${totalProfit.toFixed(2)}`,
+          icon: <TrendingUp className="text-green-500" />,
+          iconBg: "bg-green-100",
         },
         {
           title: "Out of Stock",

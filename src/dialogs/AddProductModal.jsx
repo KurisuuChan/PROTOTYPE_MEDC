@@ -115,7 +115,7 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label
                 htmlFor="product-quantity"
@@ -127,10 +127,30 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
                 id="product-quantity"
                 type="number"
                 name="quantity"
-                placeholder="Total Quantity Available"
+                placeholder="Total Quantity"
                 value={formData.quantity}
                 onChange={handleChange}
                 className="w-full p-3 border border-gray-300 rounded-lg"
+                required
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="product-cost-price"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Cost Price (₱) *
+              </label>
+              <input
+                id="product-cost-price"
+                type="number"
+                name="cost_price"
+                placeholder="Cost per item"
+                value={formData.cost_price}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+                step="0.01"
+                min="0"
                 required
               />
             </div>

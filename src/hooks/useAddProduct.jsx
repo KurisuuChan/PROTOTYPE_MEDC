@@ -8,6 +8,7 @@ const initialFormState = {
   category: "Pain Relief",
   quantity: "",
   price: "",
+  cost_price: "", // Added cost_price
   expireDate: "",
   productType: "Medicine",
   description: "",
@@ -120,6 +121,7 @@ export const useAddProduct = (onSuccess) => {
         ...formData,
         quantity: numericQuantity,
         price: parseFloat(defaultVariantPrice) || 0,
+        cost_price: parseFloat(formData.cost_price) || 0, // Added cost_price
         medicineId: newMedicineId,
         status: numericQuantity > 0 ? "Available" : "Unavailable",
       };
