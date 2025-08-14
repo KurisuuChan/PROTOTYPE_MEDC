@@ -232,14 +232,16 @@ export const generateProductPDF = async (products, brandingData) => {
       theme: "grid",
       headStyles: { fillColor: [22, 160, 133], textColor: 255 },
       styles: { fontSize: 8, cellPadding: 2 },
+      // --- THIS IS THE FIX ---
+      // Adjusted column widths to prevent overflow.
       columnStyles: {
-        0: { cellWidth: 25 }, // ID
-        1: { cellWidth: 45 }, // Name
-        2: { cellWidth: 30 }, // Category
-        3: { cellWidth: 18, halign: "center" }, // Quantity
-        4: { cellWidth: 22, halign: "right" }, // Price
-        5: { cellWidth: 25 }, // Expiry
-        6: { cellWidth: 25 }, // Status
+        0: { cellWidth: 20 }, // ID
+        1: { cellWidth: 40 }, // Name
+        2: { cellWidth: 28 }, // Category
+        3: { cellWidth: 15, halign: "center" }, // Quantity
+        4: { cellWidth: 20, halign: "right" }, // Price
+        5: { cellWidth: 22 }, // Expiry
+        6: { cellWidth: 20 }, // Status
       },
       margin: { top: 40 },
       didDrawPage: (data) => {

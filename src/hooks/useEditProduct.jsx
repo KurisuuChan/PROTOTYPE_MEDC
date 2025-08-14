@@ -74,6 +74,10 @@ export const useEditProduct = (product, onSuccess) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     const updateData = { ...formData };
+
+    // Ensure expireDate is null if it's an empty string to prevent database errors
+    updateData.expireDate = updateData.expireDate || null;
+
     delete updateData.product_variants; // This field should not be in the update payload
     editProductMutation.mutate(updateData);
   };

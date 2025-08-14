@@ -171,8 +171,5 @@ export const useDashboardData = () => {
     recentSales, // Pass recentSales directly
     loading: productsLoading || salesLoading,
     error: productsError || salesError,
-    fetchDashboardData: () => {
-      // Invalidation can be handled at a higher level if needed
-    },
   };
 };

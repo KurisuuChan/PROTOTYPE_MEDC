@@ -101,6 +101,9 @@ export const useAddProduct = (onSuccess) => {
       quantity: parseInt(formData.quantity, 10) || 0,
       price: parseFloat(defaultVariantPrice) || 0,
       cost_price: parseFloat(formData.cost_price) || 0,
+      // --- THIS IS THE FIX ---
+      // If expireDate is an empty string, set it to null for the database.
+      expireDate: formData.expireDate || null,
       medicineId: newMedicineId,
       status:
         (parseInt(formData.quantity, 10) || 0) > 0
