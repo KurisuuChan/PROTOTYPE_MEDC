@@ -1,6 +1,6 @@
 // src/pages/Financials.jsx
 import React from "react";
-import { useFinancialsData } from "@/hooks/useFinancialsData";
+import { useFinancialsData } from "@/hooks/useFinancialsData.jsx";
 import {
   Landmark,
   Archive,
@@ -8,21 +8,20 @@ import {
   WifiOff,
   RefreshCw,
   BarChart,
+  Loader2,
 } from "lucide-react";
 import MonthlySalesChart from "@/components/charts/MonthlySalesChart";
 
 const Financials = () => {
-  const {
-    stats,
-    monthlyProfitData,
-    productProfitability,
-    loading,
-    error,
-    fetchFinancialsData,
-  } = useFinancialsData();
+  const { stats, monthlyProfitData, productProfitability, loading, error } =
+    useFinancialsData();
 
   if (loading) {
-    return <div className="text-center p-8">Loading financial data...</div>;
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin text-blue-500" size={40} />
+      </div>
+    );
   }
 
   if (error) {
@@ -31,10 +30,7 @@ const Financials = () => {
         <WifiOff size={48} className="text-red-500 mb-4" />
         <h2 className="text-2xl font-semibold">Connection Error</h2>
         <p className="text-gray-600 mb-6">Could not fetch financial data.</p>
-        <button
-          onClick={fetchFinancialsData}
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg"
-        >
+        <button className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg">
           <RefreshCw size={16} />
           Try Again
         </button>
@@ -100,7 +96,7 @@ const Financials = () => {
           <MonthlySalesChart
             data={monthlyProfitData.map((d) => ({
               month: d.month,
-              sales: d.profit,
+              sales: d.profit, // Re-using sales prop for profit
             }))}
           />
         </div>

@@ -8,22 +8,12 @@ import NotificationsDropdown from "./notifications/NotificationsDropdown";
 const Header = ({ handleLogout, user }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [mutedCategories, setMutedCategories] = useState([]);
 
   const notificationsRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  const {
-    notifications,
-    loading,
-    unreadCount,
-    categories,
-    categoryCounts,
-    groupedByDate,
-    markAsRead,
-    dismiss,
-  } = useNotificationHistory();
+  // The hook now returns everything we need
+  const notificationProps = useNotificationHistory();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -38,36 +28,12 @@ const Header = ({ handleLogout, user }) => {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const displayName = user?.user_metadata?.full_name || "Administrator";
   const displayEmail = user?.email || "medcure.ph";
   const avatarUrl = user?.user_metadata?.avatar_url;
-
-  const handleMarkCategoryAsRead = (category) => {
-    const idsToMark = notifications
-      .filter((n) => (category === "All" || n.category === category) && !n.read)
-      .map((n) => n.id);
-    idsToMark.forEach(markAsRead);
-  };
-
-  const handleClearCategory = (category) => {
-    const idsToDismiss = notifications
-      .filter((n) => category === "All" || n.category === category)
-      .map((n) => n.id);
-    idsToDismiss.forEach(dismiss);
-  };
-
-  const toggleMuteCategory = (category) => {
-    setMutedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
 
   return (
     <header className="sticky top-0 z-20 flex items-center h-[69px] bg-white border-b border-gray-200">
@@ -79,7 +45,6 @@ const Header = ({ handleLogout, user }) => {
           <input
             type="text"
             id="header-search"
-            name="header-search"
             className="w-full py-2.5 pl-12 pr-4 text-gray-800 bg-gray-50 border border-gray-200 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all"
             placeholder="Search for anything..."
           />
@@ -92,27 +57,17 @@ const Header = ({ handleLogout, user }) => {
               className="p-2.5 text-gray-500 hover:text-blue-600 relative rounded-full hover:bg-gray-100 transition-colors"
             >
               <Bell className="w-6 h-6" />
-              {unreadCount > 0 && (
+              {notificationProps.unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold border-2 border-white">
-                  {unreadCount > 99 ? "99+" : unreadCount}
+                  {notificationProps.unreadCount > 99
+                    ? "99+"
+                    : notificationProps.unreadCount}
                 </span>
               )}
             </button>
             <NotificationsDropdown
               isOpen={notificationsOpen}
-              notifications={notifications}
-              loading={loading}
-              categories={categories}
-              categoryCounts={categoryCounts}
-              groupedByDate={groupedByDate}
-              search={search}
-              setSearch={setSearch}
-              mutedCategories={mutedCategories}
-              toggleMuteCategory={toggleMuteCategory}
-              onMarkAsRead={markAsRead}
-              onDismiss={dismiss}
-              onMarkCategoryAsRead={handleMarkCategoryAsRead}
-              onClearCategory={handleClearCategory}
+              {...notificationProps} // Pass all props from the hook
             />
           </div>
 

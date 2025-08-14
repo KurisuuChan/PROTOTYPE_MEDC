@@ -20,13 +20,14 @@ import {
 import SalesHistoryModal from "@/dialogs/SalesHistoryModal";
 import VariantSelectionModal from "@/dialogs/VariantSelectionModal";
 import { usePointOfSale } from "@/hooks/usePointOfSale";
+import { useProducts } from "@/hooks/useProducts.jsx";
 import { formatStock } from "@/utils/formatters";
 
 const PointOfSales = ({ branding }) => {
+  const { products, isLoading: productsLoading, isError } = useProducts();
+
   const {
-    products,
-    loading,
-    error,
+    loading: posLoading,
     cart,
     searchTerm,
     setSearchTerm,
@@ -45,13 +46,12 @@ const PointOfSales = ({ branding }) => {
     filteredProducts,
     lowStockProducts,
     outOfStockProducts,
-    fetchProducts,
     handleSelectProduct,
     handleAddToCart,
     getReservedPieces,
     updateCartQuantity,
     handleCheckout,
-  } = usePointOfSale(branding);
+  } = usePointOfSale(products, productsLoading);
 
   const getVariantIcon = (unitType) => {
     switch (unitType) {
@@ -79,7 +79,7 @@ const PointOfSales = ({ branding }) => {
     }
   };
 
-  if (error) {
+  if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
         <WifiOff size={48} className="text-red-500 mb-4" />
@@ -87,15 +87,10 @@ const PointOfSales = ({ branding }) => {
           Connection Error
         </h2>
         <p className="text-gray-600 mb-6">
-          There was a problem fetching the data. Please check your internet
-          connection.
+          There was a problem fetching product data.
         </p>
-        <button
-          onClick={fetchProducts}
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-md"
-        >
-          <RefreshCw size={16} />
-          Try Again
+        <button className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg">
+          <RefreshCw size={16} /> Try Again
         </button>
       </div>
     );
@@ -110,7 +105,6 @@ const PointOfSales = ({ branding }) => {
       />
       <div className="flex flex-col lg:flex-row gap-8 h-[calc(100vh-110px)]">
         <div className="flex-1 lg:w-3/5 bg-white p-6 rounded-2xl shadow-lg flex flex-col">
-          {/* Stock Alerts */}
           {(lowStockProducts.length > 0 || outOfStockProducts.length > 0) && (
             <div className="mb-4 space-y-2">
               {outOfStockProducts.length > 0 && (
@@ -118,8 +112,7 @@ const PointOfSales = ({ branding }) => {
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                     <span className="text-sm font-medium text-red-800">
-                      {outOfStockProducts.length} product
-                      {outOfStockProducts.length > 1 ? "s" : ""} out of stock
+                      {outOfStockProducts.length} product(s) out of stock
                     </span>
                   </div>
                 </div>
@@ -129,16 +122,13 @@ const PointOfSales = ({ branding }) => {
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
                     <span className="text-sm font-medium text-yellow-800">
-                      {lowStockProducts.length} product
-                      {lowStockProducts.length > 1 ? "s" : ""} running low on
-                      stock
+                      {lowStockProducts.length} product(s) running low on stock
                     </span>
                   </div>
                 </div>
               )}
             </div>
           )}
-
           <div className="flex items-center gap-4 mb-4 flex-shrink-0">
             <div className="relative flex-1">
               <Search
@@ -147,8 +137,6 @@ const PointOfSales = ({ branding }) => {
               />
               <input
                 type="text"
-                id="pos-search"
-                name="pos-search"
                 placeholder="Search by name, category, or ID..."
                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={searchTerm}
@@ -164,7 +152,7 @@ const PointOfSales = ({ branding }) => {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto -m-2 p-2">
-            {loading ? (
+            {productsLoading ? (
               <div className="flex justify-center items-center h-full">
                 <Loader2 className="animate-spin text-blue-500" size={32} />
               </div>
@@ -172,16 +160,14 @@ const PointOfSales = ({ branding }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredProducts.map((med) => {
                   let stockClass = "text-gray-400";
-                  let stockText;
-
+                  let stockText = formatStock(
+                    med.quantity,
+                    med.product_variants
+                  );
                   if (med.quantity === 0) {
                     stockClass = "text-red-500 font-medium";
-                    stockText = "Out of Stock";
-                  } else {
-                    stockText = formatStock(med.quantity, med.product_variants);
-                    if (med.quantity <= 10) {
-                      stockClass = "text-yellow-600 font-medium";
-                    }
+                  } else if (med.quantity <= 10) {
+                    stockClass = "text-yellow-600 font-medium";
                   }
 
                   return (
@@ -205,15 +191,12 @@ const PointOfSales = ({ branding }) => {
                             ₱{med.price.toFixed(2)}
                           </span>
                         </div>
-
                         <p className="text-xs text-gray-500 mb-2">
                           {med.category}
                         </p>
                         <p className={`text-xs mb-3 ${stockClass}`}>
                           {stockText}
                         </p>
-
-                        {/* Variant Pricing Display */}
                         {med.product_variants &&
                           med.product_variants.length > 1 && (
                             <div className="space-y-1">
@@ -384,9 +367,9 @@ const PointOfSales = ({ branding }) => {
             <button
               onClick={handleCheckout}
               className="w-full py-4 bg-blue-600 text-white font-bold text-lg rounded-xl hover:bg-blue-700 transition-colors shadow-lg disabled:bg-blue-300 disabled:shadow-none"
-              disabled={loading || cart.length === 0}
+              disabled={posLoading || cart.length === 0}
             >
-              {loading ? (
+              {posLoading ? (
                 <Loader2 className="animate-spin mx-auto" />
               ) : (
                 "Complete Sale"

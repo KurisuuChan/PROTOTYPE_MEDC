@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export const usePagination = (data) => {
@@ -12,6 +12,17 @@ export const usePagination = (data) => {
 
   const totalPages = Math.ceil(data.length / itemsPerPage);
 
+  // --- BUG FIX ---
+  // Add this useEffect to reset the page if it becomes invalid
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    } else if (totalPages === 0) {
+      setCurrentPage(1);
+    }
+  }, [data.length, totalPages, currentPage]);
+  // --- END BUG FIX ---
+
   const PaginationComponent = () => (
     <div className="flex justify-center mt-8">
       <nav className="flex items-center space-x-2">
@@ -23,14 +34,14 @@ export const usePagination = (data) => {
           <ChevronLeft size={20} />
         </button>
         <span className="text-sm">
-          Page {currentPage} of {totalPages}
+          Page {currentPage} of {totalPages || 1}
         </span>
         <button
           className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50"
           onClick={() =>
             setCurrentPage((prev) => Math.min(prev + 1, totalPages))
           }
-          disabled={currentPage === totalPages}
+          disabled={currentPage === totalPages || totalPages === 0}
         >
           <ChevronRight size={20} />
         </button>
@@ -46,7 +57,7 @@ export const usePagination = (data) => {
         value={itemsPerPage}
         onChange={(e) => {
           setItemsPerPage(Number(e.target.value));
-          setCurrentPage(1); // Reset to page 1 when items per page changes
+          setCurrentPage(1);
         }}
       >
         <option value={10}>10</option>

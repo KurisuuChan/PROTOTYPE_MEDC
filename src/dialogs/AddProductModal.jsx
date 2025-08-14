@@ -1,9 +1,7 @@
-// src/dialogs/AddProductModal.jsx
 import React, { useEffect } from "react";
 import PropTypes from "prop-types";
 import { PlusCircle, X, Plus, Trash2 } from "lucide-react";
-import { useNotification } from "@/hooks/useNotifications";
-import { useAddProduct } from "@/hooks/useAddProduct";
+import { useAddProduct } from "@/hooks/useAddProduct.jsx";
 
 const productCategories = [
   "Pain Relief",
@@ -19,7 +17,6 @@ const productCategories = [
 ];
 
 const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
-  const { addNotification } = useNotification();
   const {
     formData,
     variants,
@@ -32,7 +29,6 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
     handleSubmit,
     resetForm,
   } = useAddProduct(() => {
-    addNotification("Product added successfully!", "success");
     onProductAdded();
     onClose();
   });

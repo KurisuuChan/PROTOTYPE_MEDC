@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import { Bell, Search, Volume2, VolumeX } from "lucide-react";
+import { Bell } from "lucide-react"; // Removed unused 'Search' import
 import TabButton from "./TabButton";
 import { NotificationGroup } from "./NotificationItem.jsx";
 
@@ -13,14 +13,9 @@ const NotificationsDropdown = ({
   categories,
   categoryCounts,
   groupedByDate,
-  search,
-  setSearch,
-  mutedCategories,
-  toggleMuteCategory,
   onMarkAsRead,
   onDismiss,
-  onMarkCategoryAsRead,
-  onClearCategory,
+  markAllAsRead,
 }) => {
   const [activeCategory, setActiveCategory] = useState("All");
 
@@ -33,13 +28,15 @@ const NotificationsDropdown = ({
   );
 
   const filteredGroups = useMemo(() => {
+    if (!groupedByDate) return [];
+
     return groupedByDate
       .map(({ date, items }) => ({
         date,
         items:
           activeCategory === "All"
             ? items
-            : items.filter((n) => n.category === activeCategory),
+            : items.filter((n) => n.type === activeCategory),
       }))
       .filter((g) => g.items.length > 0);
   }, [groupedByDate, activeCategory]);
@@ -76,18 +73,6 @@ const NotificationsDropdown = ({
     <div className="absolute right-0 mt-3 w-full max-w-md sm:w-[28rem] bg-white rounded-2xl shadow-2xl border border-gray-100 z-30 flex flex-col">
       <div className="flex justify-between items-center px-5 py-3 border-b border-gray-200 sticky top-0 bg-white">
         <h3 className="font-semibold text-gray-800">Notifications</h3>
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
-            className="pl-8 pr-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
       </div>
       <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 sticky top-[45px] z-10">
         <div className="flex items-center gap-2 flex-wrap">
@@ -104,36 +89,10 @@ const NotificationsDropdown = ({
         <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
           <button
             className="text-blue-600 hover:underline"
-            onClick={() => onMarkCategoryAsRead(activeCategory)}
+            onClick={() => markAllAsRead()}
           >
-            Mark {activeCategory} as read
+            Mark All as Read
           </button>
-          <span className="text-gray-300">|</span>
-          <button
-            className="text-red-600 hover:underline"
-            onClick={() => onClearCategory(activeCategory)}
-          >
-            Clear {activeCategory}
-          </button>
-          {activeCategory !== "All" && (
-            <button
-              className="ml-auto flex items-center gap-1 text-gray-600 hover:text-gray-800"
-              onClick={() => toggleMuteCategory(activeCategory)}
-              title={
-                mutedCategories.includes(activeCategory) ? "Unmute" : "Mute"
-              }
-            >
-              {mutedCategories.includes(activeCategory) ? (
-                <>
-                  <VolumeX size={14} /> Unmute {activeCategory}
-                </>
-              ) : (
-                <>
-                  <Volume2 size={14} /> Mute {activeCategory}
-                </>
-              )}
-            </button>
-          )}
         </div>
       </div>
       <div className="max-h-[28rem] overflow-y-auto">{renderContent()}</div>
@@ -156,14 +115,9 @@ NotificationsDropdown.propTypes = {
   categories: PropTypes.array.isRequired,
   categoryCounts: PropTypes.object.isRequired,
   groupedByDate: PropTypes.array.isRequired,
-  search: PropTypes.string.isRequired,
-  setSearch: PropTypes.func.isRequired,
-  mutedCategories: PropTypes.array.isRequired,
-  toggleMuteCategory: PropTypes.func.isRequired,
   onMarkAsRead: PropTypes.func.isRequired,
   onDismiss: PropTypes.func.isRequired,
-  onMarkCategoryAsRead: PropTypes.func.isRequired,
-  onClearCategory: PropTypes.func.isRequired,
+  markAllAsRead: PropTypes.func.isRequired,
 };
 
 export default NotificationsDropdown;

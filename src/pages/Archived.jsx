@@ -13,15 +13,13 @@ import {
   List,
   AlertTriangle,
   Clock,
+  Loader2,
 } from "lucide-react";
-import { useNotification } from "@/hooks/useNotifications"; // Corrected import path
+import { useNotification } from "@/hooks/useNotifications";
 import { useProductSearch } from "@/hooks/useProductSearch";
 import { usePagination } from "@/hooks/usePagination.jsx";
-import { useArchivedProducts } from "@/hooks/useArchivedProducts";
+import { useArchivedProducts } from "@/hooks/useArchivedProducts"; // <-- Import the new hook
 
-// ... (rest of the file is unchanged)
-
-// A reusable confirmation modal with improved styling and prop validation
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   if (!isOpen) return null;
   return (
@@ -35,10 +33,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
             />
           </div>
           <div className="mt-0 text-left">
-            <h3
-              className="text-lg leading-6 font-bold text-gray-900"
-              id="modal-title"
-            >
+            <h3 className="text-lg leading-6 font-bold text-gray-900">
               {title}
             </h3>
             <div className="mt-2">
@@ -79,29 +74,22 @@ const Archived = () => {
   const { addNotification } = useNotification();
   const {
     archivedProducts,
-    loading,
-    error,
-    selectedItems,
-    setSelectedItems,
-    fetchArchivedProducts,
+    isLoading,
+    isError,
     unarchiveProducts,
     deleteProductsPermanently,
   } = useArchivedProducts(addNotification);
 
+  const [selectedItems, setSelectedItems] = useState([]);
   const { searchTerm, setSearchTerm, searchedProducts } =
     useProductSearch(archivedProducts);
   const { paginatedData, PaginationComponent } =
     usePagination(searchedProducts);
-
   const [viewMode, setViewMode] = useState("grid");
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedItems(searchedProducts.map((p) => p.id));
-    } else {
-      setSelectedItems([]);
-    }
+    setSelectedItems(e.target.checked ? searchedProducts.map((p) => p.id) : []);
   };
 
   const handleSelectItem = (id) => {
@@ -111,42 +99,45 @@ const Archived = () => {
   };
 
   const handleDeleteClick = () => {
-    if (selectedItems.length > 0) {
-      setDeleteModalOpen(true);
-    }
+    if (selectedItems.length > 0) setDeleteModalOpen(true);
   };
 
   const confirmDelete = () => {
-    deleteProductsPermanently(selectedItems);
+    deleteProductsPermanently(selectedItems, {
+      onSuccess: () => setSelectedItems([]),
+    });
     setDeleteModalOpen(false);
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("en-US", {
+  const handleUnarchive = () => {
+    unarchiveProducts(selectedItems, { onSuccess: () => setSelectedItems([]) });
+  };
+
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
-  if (loading) {
-    return <div className="text-center p-8">Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="animate-spin text-blue-500" size={40} />
+      </div>
+    );
   }
 
-  if (error) {
+  if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
         <WifiOff size={48} className="text-red-500 mb-4" />
         <h2 className="text-2xl font-semibold">Connection Error</h2>
-        <p className="text-gray-600 mb-6">Could not fetch data.</p>
-        <button
-          onClick={fetchArchivedProducts}
-          className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg"
-        >
-          <RefreshCw size={16} />
-          Try Again
+        <p className="text-gray-600 mb-6">Could not fetch archived data.</p>
+        <button className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg">
+          <RefreshCw size={16} /> Try Again
         </button>
       </div>
     );
@@ -162,6 +153,7 @@ const Archived = () => {
         message={`You are about to delete ${selectedItems.length} product(s). This is irreversible. Are you sure?`}
       />
       <div className="bg-white p-8 rounded-2xl shadow-lg">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lg bg-gray-100">
@@ -195,7 +187,6 @@ const Archived = () => {
                 className={`p-2 rounded-full ${
                   viewMode === "grid" ? "bg-white shadow" : "text-gray-500"
                 }`}
-                title="Grid View"
               >
                 <LayoutGrid size={20} />
               </button>
@@ -205,7 +196,6 @@ const Archived = () => {
                 className={`p-2 rounded-full ${
                   viewMode === "list" ? "bg-white shadow" : "text-gray-500"
                 }`}
-                title="List View"
               >
                 <List size={20} />
               </button>
@@ -213,13 +203,14 @@ const Archived = () => {
           </div>
         </div>
 
+        {/* Action Bar */}
         {selectedItems.length > 0 && (
           <div className="flex items-center gap-4 p-4 mb-6 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="font-semibold text-blue-800 flex-grow">
               {selectedItems.length} selected
             </p>
             <button
-              onClick={() => unarchiveProducts(selectedItems)}
+              onClick={handleUnarchive}
               className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg font-semibold"
             >
               <RotateCcw size={16} /> Restore
@@ -233,6 +224,7 @@ const Archived = () => {
           </div>
         )}
 
+        {/* Content */}
         {paginatedData.length > 0 ? (
           <div>
             {viewMode === "grid" ? (

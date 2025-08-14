@@ -1,38 +1,21 @@
 // src/hooks/usePointOfSale.jsx
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import * as api from "@/services/api";
-import { useNotification } from "@/hooks/useNotifications"; // Corrected import path
+import { useNotification } from "@/hooks/useNotifications";
+import { useQueryClient } from "@tanstack/react-query";
 
-export const usePointOfSale = () => {
-  const [products, setProducts] = useState([]);
+export const usePointOfSale = (products, isLoading) => {
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDiscounted, setIsDiscounted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editingCartItem, setEditingCartItem] = useState(null);
 
   const { addNotification } = useNotification();
-
-  const fetchProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await api.getAvailableProducts();
-    if (fetchError) {
-      console.error("Error fetching products for POS:", fetchError);
-      setError(fetchError);
-    } else {
-      setProducts(data || []);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  const queryClient = useQueryClient();
 
   const resetSale = () => {
     setCart([]);
@@ -42,7 +25,7 @@ export const usePointOfSale = () => {
 
   const handleSelectProduct = (product) => {
     const existingItem = cart.find(
-      (item) => item.id === product.id && !item.selectedVariant // handles products w/o variants
+      (item) => item.id === product.id && !item.selectedVariant
     );
     setEditingCartItem(existingItem || null);
     setSelectedProduct(product);
@@ -61,10 +44,7 @@ export const usePointOfSale = () => {
 
       if (existingItemIndex > -1) {
         const updatedCart = [...prevCart];
-        updatedCart[existingItemIndex] = {
-          ...productToAdd,
-          uniqueId,
-        };
+        updatedCart[existingItemIndex] = { ...productToAdd, uniqueId };
         return updatedCart;
       }
       return [...prevCart, { ...productToAdd, uniqueId }];
@@ -109,10 +89,13 @@ export const usePointOfSale = () => {
   }, [cart, isDiscounted]);
 
   const filteredProducts = useMemo(() => {
+    const availableProducts = products.filter(
+      (p) => p.quantity > 0 && p.status === "Available"
+    );
     if (!searchTerm) {
-      return products;
+      return availableProducts;
     }
-    return products.filter(
+    return availableProducts.filter(
       (p) =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,7 +117,7 @@ export const usePointOfSale = () => {
       addNotification("Cart is empty.", "warning");
       return;
     }
-    setLoading(true);
+    setIsProcessingCheckout(true);
     try {
       const saleData = {
         total_amount: total,
@@ -163,20 +146,19 @@ export const usePointOfSale = () => {
         }
       }
 
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+
       addNotification("Sale completed successfully!", "success");
       resetSale();
-      fetchProducts();
     } catch (error) {
       addNotification(`Checkout failed: ${error.message}`, "error");
     } finally {
-      setLoading(false);
+      setIsProcessingCheckout(false);
     }
   };
 
   return {
-    products,
-    loading,
-    error,
+    loading: isLoading || isProcessingCheckout,
     cart,
     searchTerm,
     setSearchTerm,
@@ -195,7 +177,6 @@ export const usePointOfSale = () => {
     filteredProducts,
     lowStockProducts,
     outOfStockProducts,
-    fetchProducts,
     handleSelectProduct,
     handleAddToCart,
     getReservedPieces,

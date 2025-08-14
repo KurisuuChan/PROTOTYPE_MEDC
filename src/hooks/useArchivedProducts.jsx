@@ -1,42 +1,37 @@
 // src/hooks/useArchivedProducts.jsx
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "@/services/api";
 import { addSystemNotification } from "@/utils/notificationStorage";
 
 export const useArchivedProducts = (addNotification) => {
-  const [archivedProducts, setArchivedProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedItems, setSelectedItems] = useState([]);
+  const queryClient = useQueryClient();
 
-  const fetchArchivedProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setSelectedItems([]); // Reset selection on fetch
-    const { data, error: fetchError } = await api.getArchivedProducts();
+  // Query to fetch all archived products
+  const {
+    data: archivedProducts = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["archivedProducts"],
+    queryFn: async () => {
+      const { data, error } = await api.getArchivedProducts();
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+  });
 
-    if (fetchError) {
-      console.error("Error fetching archived products:", fetchError);
-      setError(fetchError);
-    } else {
-      setArchivedProducts(data || []);
-    }
-    setLoading(false);
-  }, []);
+  // Mutation to unarchive (restore) products
+  const unarchiveMutation = useMutation({
+    mutationFn: (productIds) =>
+      api.supabase
+        .from("products")
+        .update({ status: "Available" })
+        .in("id", productIds),
+    onSuccess: (data, productIds) => {
+      // Invalidate both archived and regular product queries to update all lists
+      queryClient.invalidateQueries({ queryKey: ["archivedProducts"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
 
-  useEffect(() => {
-    fetchArchivedProducts();
-  }, [fetchArchivedProducts]);
-
-  const unarchiveProducts = async (productIds) => {
-    const { error: updateError } = await api.supabase
-      .from("products")
-      .update({ status: "Available" })
-      .in("id", productIds);
-
-    if (updateError) {
-      addNotification(`Error: ${updateError.message}`, "error");
-    } else {
       addNotification(
         `${productIds.length} product(s) successfully unarchived.`,
         "success"
@@ -51,19 +46,18 @@ export const useArchivedProducts = (addNotification) => {
         createdAt: new Date().toISOString(),
         path: "/management",
       });
-      fetchArchivedProducts();
-    }
-  };
+    },
+    onError: (error) => {
+      addNotification(`Error: ${error.message}`, "error");
+    },
+  });
 
-  const deleteProductsPermanently = async (productIds) => {
-    const { error: deleteError } = await api.supabase
-      .from("products")
-      .delete()
-      .in("id", productIds);
-
-    if (deleteError) {
-      addNotification(`Error: ${deleteError.message}`, "error");
-    } else {
+  // Mutation to permanently delete products
+  const deleteMutation = useMutation({
+    mutationFn: (productIds) =>
+      api.supabase.from("products").delete().in("id", productIds),
+    onSuccess: (data, productIds) => {
+      queryClient.invalidateQueries({ queryKey: ["archivedProducts"] });
       addNotification(
         `${productIds.length} product(s) permanently deleted.`,
         "success"
@@ -78,18 +72,17 @@ export const useArchivedProducts = (addNotification) => {
         createdAt: new Date().toISOString(),
         path: "/archived",
       });
-      fetchArchivedProducts();
-    }
-  };
+    },
+    onError: (error) => {
+      addNotification(`Error: ${error.message}`, "error");
+    },
+  });
 
   return {
     archivedProducts,
-    loading,
-    error,
-    selectedItems,
-    setSelectedItems,
-    fetchArchivedProducts,
-    unarchiveProducts,
-    deleteProductsPermanently,
+    isLoading,
+    isError,
+    unarchiveProducts: unarchiveMutation.mutate,
+    deleteProductsPermanently: deleteMutation.mutate,
   };
 };

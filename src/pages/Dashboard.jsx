@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React from "react";
-import { Link } from "react-router-dom"; // Import Link
+import { Link } from "react-router-dom";
 import {
   ChevronDown,
   Clock,
@@ -10,10 +10,11 @@ import {
   WifiOff,
   RefreshCw,
   PackageX,
+  Loader2,
 } from "lucide-react";
 import MonthlySalesChart from "@/components/charts/MonthlySalesChart";
 import SalesByCategoryChart from "@/components/charts/SalesByCategoryChart";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDashboardData } from "@/hooks/useDashboardData.jsx";
 
 const Dashboard = () => {
   const {
@@ -32,7 +33,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p>Loading dashboard...</p>
+        <Loader2 className="animate-spin text-blue-500" size={40} />
       </div>
     );
   }
@@ -45,8 +46,7 @@ const Dashboard = () => {
           Connection Error
         </h2>
         <p className="text-gray-600 mb-6">
-          There was a problem fetching the dashboard data. Please check your
-          internet connection.
+          There was a problem fetching the dashboard data.
         </p>
         <button
           onClick={fetchDashboardData}
