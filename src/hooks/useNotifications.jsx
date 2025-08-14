@@ -5,13 +5,14 @@ import { NotificationContext } from "@/context/NotificationContext";
 import {
   getDismissedNotificationIds,
   getNotificationSettings,
-  getReadNotificationIds,
   getSystemNotifications,
   removeSystemNotification,
   setDismissedNotificationIds,
-  setReadNotificationIds,
   getLowStockTimestamps,
   setLowStockTimestamps,
+  // --- MODIFIED IMPORTS ---
+  getReadTimestamps,
+  updateReadTimestamp,
 } from "@/utils/notificationStorage";
 
 // HOOK 1: For Showing UI Toasts (Pop-up Messages)
@@ -27,22 +28,30 @@ export const useNotification = () => {
 
 // HOOK 2: For Managing the Notification History (Bell Icon)
 
+// --- HELPER FUNCTION TO DETERMINE READ STATUS ---
+const isNotificationRead = (id, createdAt, readTimestamps) => {
+  const lastReadTime = readTimestamps[id];
+  if (!lastReadTime) return false;
+  return new Date(lastReadTime) >= new Date(createdAt);
+};
+
 // Helper Functions
-const generateSystemNotifications = (readIds) => {
+const generateSystemNotifications = (readTimestamps) => {
   const systemNotifications = getSystemNotifications();
   return systemNotifications.map((s) => ({
     ...s,
-    read: readIds.includes(s.id),
     createdAt: new Date(s.createdAt),
+    read: isNotificationRead(s.id, s.createdAt, readTimestamps),
   }));
 };
 
-const generateExpiryNotifications = (product, settings, readIds) => {
+const generateExpiryNotifications = (product, settings, readTimestamps) => {
   if (!product.expireDate) return [];
   const notifications = [];
   const today = new Date();
   const expiryDate = new Date(product.expireDate);
   const expiredId = `expired-${product.id}`;
+
   if (expiryDate < today) {
     notifications.push({
       id: expiredId,
@@ -51,14 +60,16 @@ const generateExpiryNotifications = (product, settings, readIds) => {
       title: "Expired Medicine",
       category: "Expired",
       description: `${product.name} has expired.`,
-      read: readIds.includes(expiredId),
       path: `/management?highlight=${product.id}`,
       createdAt: expiryDate,
+      read: isNotificationRead(expiredId, expiryDate, readTimestamps),
     });
   } else if (settings.enableExpiringSoon) {
     const diffTime = expiryDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const expSoonId = `exp-soon-${product.id}`;
+    const createdAt = new Date();
+
     if (diffDays > 0 && diffDays <= Number(settings.expiringSoonDays)) {
       notifications.push({
         id: expSoonId,
@@ -67,36 +78,31 @@ const generateExpiryNotifications = (product, settings, readIds) => {
         title: "Expiring Soon",
         category: "Expiring Soon",
         description: `${product.name} expires in ${diffDays} day(s).`,
-        read: readIds.includes(expSoonId),
         path: `/management?highlight=${product.id}`,
-        createdAt: new Date(),
+        createdAt,
+        read: isNotificationRead(expSoonId, createdAt, readTimestamps),
       });
     }
   }
   return notifications;
 };
 
-const generateStockNotifications = (product, settings, readIds, timestamps) => {
+const generateStockNotifications = (
+  product,
+  settings,
+  readTimestamps,
+  timestamps
+) => {
   const notifications = [];
   const { lowStockThreshold } = settings;
   const lowStockId = `low-${product.id}`;
   const noStockId = `no-stock-${product.id}`;
-  let wasUpdated = false;
-
-  if (product.quantity > lowStockThreshold && timestamps[lowStockId]) {
-    delete timestamps[lowStockId];
-    wasUpdated = true;
-  }
-  if (product.quantity > 0 && timestamps[noStockId]) {
-    delete timestamps[noStockId];
-    wasUpdated = true;
-  }
 
   if (product.quantity <= lowStockThreshold && product.quantity > 0) {
     if (!timestamps[lowStockId]) {
       timestamps[lowStockId] = new Date().toISOString();
-      wasUpdated = true;
     }
+    const createdAt = new Date(timestamps[lowStockId]);
     notifications.push({
       id: lowStockId,
       iconType: "lowStock",
@@ -104,15 +110,15 @@ const generateStockNotifications = (product, settings, readIds, timestamps) => {
       title: "Low Stock",
       category: "Low Stock",
       description: `${product.name} has only ${product.quantity} items left.`,
-      read: readIds.includes(lowStockId),
       path: `/management?highlight=${product.id}`,
-      createdAt: new Date(timestamps[lowStockId]),
+      createdAt,
+      read: isNotificationRead(lowStockId, createdAt, readTimestamps),
     });
   } else if (product.quantity === 0) {
     if (!timestamps[noStockId]) {
       timestamps[noStockId] = new Date().toISOString();
-      wasUpdated = true;
     }
+    const createdAt = new Date(timestamps[noStockId]);
     notifications.push({
       id: noStockId,
       iconType: "noStock",
@@ -120,12 +126,12 @@ const generateStockNotifications = (product, settings, readIds, timestamps) => {
       title: "Out of Stock",
       category: "No Stock",
       description: `${product.name} is out of stock.`,
-      read: readIds.includes(noStockId),
       path: `/management?highlight=${product.id}`,
-      createdAt: new Date(timestamps[noStockId]),
+      createdAt,
+      read: isNotificationRead(noStockId, createdAt, readTimestamps),
     });
   }
-  return { notifications, wasUpdated };
+  return notifications;
 };
 
 export function useNotificationHistory() {
@@ -145,29 +151,28 @@ export function useNotificationHistory() {
       return;
     }
 
-    const readIds = getReadNotificationIds();
-    let generated = generateSystemNotifications(readIds);
+    const readTimestamps = getReadTimestamps();
     const settings = getNotificationSettings();
     const lowStockTimestamps = getLowStockTimestamps();
-    let timestampsWereUpdated = false;
+
+    let generated = generateSystemNotifications(readTimestamps);
 
     products.forEach((product) => {
       const expiryNotifs = generateExpiryNotifications(
         product,
         settings,
-        readIds
+        readTimestamps
       );
-      const stockResult = generateStockNotifications(
+      const stockNotifs = generateStockNotifications(
         product,
         settings,
-        readIds,
+        readTimestamps,
         lowStockTimestamps
       );
-      generated.push(...expiryNotifs, ...stockResult.notifications);
-      if (stockResult.wasUpdated) timestampsWereUpdated = true;
+      generated.push(...expiryNotifs, ...stockNotifs);
     });
 
-    if (timestampsWereUpdated) setLowStockTimestamps(lowStockTimestamps);
+    setLowStockTimestamps(lowStockTimestamps);
 
     generated.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     setAllNotifications(generated);
@@ -176,11 +181,7 @@ export function useNotificationHistory() {
 
   useEffect(() => {
     fetchAndSetInitialNotifications();
-
-    const handleRealtimeChange = () => {
-      // Removed unused 'payload' parameter
-      fetchAndSetInitialNotifications();
-    };
+    const handleRealtimeChange = () => fetchAndSetInitialNotifications();
 
     const channel = supabase
       .channel("products-notifications")
@@ -255,15 +256,20 @@ export function useNotificationHistory() {
     [allNotifications]
   );
 
-  const markAsRead = useCallback((notificationId) => {
-    const currentReadIds = getReadNotificationIds();
-    if (!currentReadIds.includes(notificationId)) {
-      setReadNotificationIds([...currentReadIds, notificationId]);
-      setAllNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+  const markAsRead = useCallback(
+    (notificationId) => {
+      const notification = allNotifications.find(
+        (n) => n.id === notificationId
       );
-    }
-  }, []);
+      if (notification && !notification.read) {
+        updateReadTimestamp(notificationId);
+        setAllNotifications((prev) =>
+          prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+        );
+      }
+    },
+    [allNotifications]
+  );
 
   return {
     notifications,

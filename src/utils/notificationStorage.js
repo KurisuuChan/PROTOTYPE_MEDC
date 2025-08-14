@@ -1,7 +1,8 @@
-// Centralized helpers for notification-related localStorage state
+// src/utils/notificationStorage.js
 
+// Centralized helpers for notification-related localStorage state
 const STORAGE_KEYS = {
-  readIds: "readNotificationIds",
+  readTimestamps: "readNotificationTimestamps", // Replaces readIds
   dismissedIds: "dismissedNotificationIds",
   lowStockTimestamps: "lowStockTimestamps",
   settings: "notificationSettings",
@@ -22,11 +23,17 @@ export const setStoredJson = (key, value) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
-// Read / Dismissed IDs
-export const getReadNotificationIds = () =>
-  getStoredJson(STORAGE_KEYS.readIds) || [];
-export const setReadNotificationIds = (ids) =>
-  setStoredJson(STORAGE_KEYS.readIds, ids);
+// --- MODIFIED SECTION ---
+// We now store a timestamp for each read notification.
+export const getReadTimestamps = () =>
+  getStoredJson(STORAGE_KEYS.readTimestamps) || {};
+
+export const updateReadTimestamp = (notificationId) => {
+  const timestamps = getReadTimestamps();
+  timestamps[notificationId] = new Date().toISOString();
+  setStoredJson(STORAGE_KEYS.readTimestamps, timestamps);
+};
+// --- END MODIFIED SECTION ---
 
 export const getDismissedNotificationIds = () =>
   getStoredJson(STORAGE_KEYS.dismissedIds) || [];
@@ -39,7 +46,7 @@ export const getLowStockTimestamps = () =>
 export const setLowStockTimestamps = (timestamps) =>
   setStoredJson(STORAGE_KEYS.lowStockTimestamps, timestamps);
 
-// Settings with defaults
+// ... (rest of the file remains the same)
 const DEFAULT_SETTINGS = {
   lowStockThreshold: 10,
   expiringSoonDays: 30,
