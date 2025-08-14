@@ -4,10 +4,26 @@ import { supabase } from "@/supabase/client";
 import { useEffect, useContext, useMemo } from "react";
 import { NotificationContext } from "@/context/NotificationContext";
 
+// Define categories in a single place for consistency
+const NOTIFICATION_CATEGORIES = {
+  low_stock: { id: "low_stock", label: "Low Stock" },
+  no_stock: { id: "no_stock", label: "No Stock" },
+  price_change: { id: "price_change", label: "System" },
+  archive: { id: "archive", label: "System" },
+  unarchive: { id: "unarchive", label: "System" },
+  delete: { id: "delete", label: "System" },
+  upload: { id: "upload", label: "System" },
+  default: { id: "system", label: "System" },
+};
+
+const getCategory = (type) => {
+  return NOTIFICATION_CATEGORIES[type] || NOTIFICATION_CATEGORIES.default;
+};
+
 export function useNotificationHistory() {
   const queryClient = useQueryClient();
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: rawNotifications = [], isLoading } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -18,6 +34,14 @@ export function useNotificationHistory() {
       return data || [];
     },
   });
+
+  // Process notifications to add a consistent category label
+  const notifications = useMemo(() => {
+    return rawNotifications.map((n) => ({
+      ...n,
+      category: getCategory(n.type).label,
+    }));
+  }, [rawNotifications]);
 
   const markAsReadMutation = useMutation({
     mutationFn: (notificationId) =>
@@ -68,37 +92,28 @@ export function useNotificationHistory() {
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  const categories = useMemo(
-    () => ["All", "low_stock", "no_stock", "system"],
-    []
-  );
+  // Generate categories dynamically for the tabs
+  const { categories, categoryCounts } = useMemo(() => {
+    const counts = { All: notifications.length };
+    const categorySet = new Set(["All"]);
 
-  const categoryCounts = useMemo(() => {
-    const counts = notifications.reduce((acc, n) => {
-      // --- FIX: Refactored nested ternary into a clearer switch statement ---
-      let key;
-      switch (n.type) {
-        case "low_stock":
-          key = "low_stock";
-          break;
-        case "no_stock":
-          key = "no_stock";
-          break;
-        default:
-          key = "system";
-          break;
-      }
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    counts.All = notifications.length;
-    return counts;
+    notifications.forEach((n) => {
+      const categoryLabel = getCategory(n.type).label;
+      counts[categoryLabel] = (counts[categoryLabel] || 0) + 1;
+      categorySet.add(categoryLabel);
+    });
+
+    return { categories: Array.from(categorySet), categoryCounts: counts };
   }, [notifications]);
 
   const groupedByDate = useMemo(() => {
     const groups = {};
     notifications.forEach((n) => {
-      const dateKey = new Date(n.created_at).toLocaleDateString();
+      const dateKey = new Date(n.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(n);
     });

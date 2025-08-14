@@ -4,6 +4,12 @@ import { supabase } from "@/supabase/client";
 // ADDED EXPORT
 export { supabase };
 
+// --- ADD THIS NEW FUNCTION ---
+// Notifications
+export const addNotification = (notificationData) =>
+  supabase.from("notifications").insert([notificationData]);
+// ----------------------------
+
 // Authentication
 export const signIn = (email, password) =>
   supabase.auth.signInWithPassword({ email, password });

@@ -1,16 +1,20 @@
 import React from "react";
-import { AlertTriangle, Archive, Bell, PackageX, RotateCcw, Tag, Trash2, UploadCloud } from "lucide-react";
+import {
+  AlertTriangle,
+  Archive,
+  Bell,
+  PackageX,
+  Tag,
+  UploadCloud,
+} from "lucide-react";
 
+// This now matches the labels defined in useNotifications.jsx
 export const getAccentClass = (category) => {
   switch (category) {
     case "Low Stock":
       return "border-l-4 border-yellow-400";
     case "No Stock":
       return "border-l-4 border-red-500";
-    case "Expired":
-      return "border-l-4 border-red-500";
-    case "Expiring Soon":
-      return "border-l-4 border-orange-400";
     case "System":
       return "border-l-4 border-gray-300";
     default:
@@ -18,29 +22,22 @@ export const getAccentClass = (category) => {
   }
 };
 
-export const iconForType = (iconType) => {
-  switch (iconType) {
+// This uses `type` from the database, which is correct
+export const iconForType = (type) => {
+  switch (type) {
     case "upload":
       return <UploadCloud className="text-green-500" />;
     case "archive":
-      return <Archive className="text-purple-500" />;
     case "unarchive":
-      return <RotateCcw className="text-green-600" />;
     case "delete":
-      return <Trash2 className="text-red-500" />;
-    case "price":
+      return <Archive className="text-purple-500" />;
+    case "price_change":
       return <Tag className="text-blue-600" />;
-    case "lowStock":
+    case "low_stock":
       return <AlertTriangle className="text-yellow-500" />;
-    case "noStock":
+    case "no_stock":
       return <PackageX className="text-red-500" />;
-    case "expired":
-      return <AlertTriangle className="text-red-500" />;
-    case "expiringSoon":
-      return <AlertTriangle className="text-orange-500" />;
     default:
       return <Bell className="text-gray-500" />;
   }
 };
-
-
