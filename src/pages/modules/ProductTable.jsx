@@ -49,6 +49,10 @@ const ProductTable = ({
               <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Category
               </th>
+              {/* ADDED SUPPLIER HEADER */}
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Supplier
+              </th>
               <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Stock
               </th>
@@ -82,7 +86,7 @@ const ProductTable = ({
             ) : (
               <tr>
                 <td
-                  colSpan="8"
+                  colSpan="9" // <-- INCREASED COLSPAN
                   className="px-6 py-12 text-center text-gray-500"
                 >
                   <div className="flex flex-col items-center">
@@ -157,13 +161,14 @@ const MobileProductCards = ({
                 <p className="text-gray-500">Expiry</p>
                 <p className="font-medium">{p.expireDate || "N/A"}</p>
               </div>
+              {/* ADDED SUPPLIER TO MOBILE CARD */}
+              <div>
+                <p className="text-gray-500">Supplier</p>
+                <p className="font-medium">{p.supplier || "N/A"}</p>
+              </div>
               <div>
                 <p className="text-gray-500">Status</p>
                 <p className="font-medium">{p.status}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Type</p>
-                <p className="font-medium">{p.productType}</p>
               </div>
             </div>
 

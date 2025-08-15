@@ -77,6 +77,7 @@ const parseCsvLine = (line, headers, startingId, datePart) => {
       expireDate: entry.expireDate,
       productType: entry.productType,
       description: entry.description,
+      supplier: entry.supplier, // <-- ADDED THIS LINE
       medicineId: medicineId,
       status: numericQty > 0 ? "Available" : "Unavailable",
     },
@@ -213,10 +214,11 @@ const ImportCSVModal = ({ isOpen, onClose, onImportSuccess }) => {
   };
 
   const downloadTemplate = () => {
-    const csvContent = `name,category,quantity,price,cost_price,expireDate,productType,description,boxPrice,boxUnits,sheetPrice,sheetUnits,piecePrice,pieceUnits
-Paracetamol 500mg,Pain Relief,100,5.00,2.50,2025-12-31,Medicine,Generic pain reliever,45.00,10,9.00,2,5.00,1
-Amoxicillin 250mg,Prescription,50,8.50,4.00,2025-06-30,Medicine,Antibiotic,76.50,9,17.00,2,8.50,1
-Vitamin C 1000mg,Vitamins & Supplements,200,3.00,1.20,2026-01-31,Supplement,Immune support,27.00,9,6.00,2,3.00,1`;
+    // UPDATED CSV CONTENT
+    const csvContent = `name,category,supplier,quantity,price,cost_price,expireDate,productType,description,boxPrice,boxUnits,sheetPrice,sheetUnits,piecePrice,pieceUnits
+Paracetamol 500mg,Pain Relief,PharmaCorp,100,5.00,2.50,2025-12-31,Medicine,Generic pain reliever,45.00,10,9.00,2,5.00,1
+Amoxicillin 250mg,Prescription,MedSupply Inc.,50,8.50,4.00,2025-06-30,Medicine,Antibiotic,76.50,9,17.00,2,8.50,1
+Vitamin C 1000mg,Vitamins & Supplements,HealthWell,200,3.00,1.20,2026-01-31,Supplement,Immune support,27.00,9,6.00,2,3.00,1`;
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -272,11 +274,11 @@ Vitamin C 1000mg,Vitamins & Supplements,200,3.00,1.20,2026-01-31,Supplement,Immu
 
           <p className="text-sm text-gray-600">
             <strong>Columns:</strong> <code>name</code>, <code>category</code>,{" "}
-            <code>quantity</code>, <code>price</code> (for default/piece),{" "}
-            <code>cost_price</code>, <code>expireDate</code>,{" "}
-            <code>productType</code>, <code>description</code>, and optional
-            variant columns like <code>boxPrice</code>, <code>sheetPrice</code>,
-            etc.
+            <code>supplier</code>, <code>quantity</code>, <code>price</code>{" "}
+            (for default/piece), <code>cost_price</code>,{" "}
+            <code>expireDate</code>, <code>productType</code>,{" "}
+            <code>description</code>, and optional variant columns like{" "}
+            <code>boxPrice</code>, <code>sheetPrice</code>, etc.
           </p>
 
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">

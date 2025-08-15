@@ -19,6 +19,7 @@ export const generateReceiptPDF = async (saleDetails, brandingData) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
     const logoBase64 = await toBase64(brandingData.url);
+    const currencyPrefix = "PHP "; // Use text prefix for guaranteed compatibility
 
     // PDF Header
     doc.addImage(logoBase64, "PNG", 14, 10, 20, 20);
@@ -63,8 +64,10 @@ export const generateReceiptPDF = async (saleDetails, brandingData) => {
       return [
         displayName,
         item.quantity,
-        `₱${(item.price_at_sale || item.price).toFixed(2)}`,
-        `₱${(item.quantity * (item.price_at_sale || item.price)).toFixed(2)}`,
+        `${currencyPrefix}${(item.price_at_sale || item.price).toFixed(2)}`,
+        `${currencyPrefix}${(
+          item.quantity * (item.price_at_sale || item.price)
+        ).toFixed(2)}`,
       ];
     });
 
@@ -93,18 +96,28 @@ export const generateReceiptPDF = async (saleDetails, brandingData) => {
       );
       const discount = subtotal * 0.2;
       doc.text("Subtotal:", 14, finalY);
-      doc.text(`₱${subtotal.toFixed(2)}`, pageWidth - 14, finalY, {
-        align: "right",
-      });
+      doc.text(
+        `${currencyPrefix}${subtotal.toFixed(2)}`,
+        pageWidth - 14,
+        finalY,
+        {
+          align: "right",
+        }
+      );
       doc.text("Discount (20%):", 14, finalY + 5);
-      doc.text(`- ₱${discount.toFixed(2)}`, pageWidth - 14, finalY + 5, {
-        align: "right",
-      });
+      doc.text(
+        `- ${currencyPrefix}${discount.toFixed(2)}`,
+        pageWidth - 14,
+        finalY + 5,
+        {
+          align: "right",
+        }
+      );
     }
     doc.setFont("helvetica", "bold");
     doc.text("Total Amount:", 14, finalY + 10);
     doc.text(
-      `₱${saleDetails.total_amount.toFixed(2)}`,
+      `${currencyPrefix}${saleDetails.total_amount.toFixed(2)}`,
       pageWidth - 14,
       finalY + 10,
       { align: "right" }
@@ -134,130 +147,135 @@ export const generateProductPDF = async (products, brandingData) => {
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
     const logoBase64 = await toBase64(brandingData.logo_url);
+    const reportDate = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const currencyPrefix = "PHP ";
 
+    // --- REPORT DATA PREPARATION ---
     const totalProducts = products.length;
     const totalQuantity = products.reduce(
       (sum, p) => sum + (p.quantity || 0),
       0
     );
     const totalValue = products.reduce(
-      (sum, p) => sum + (p.quantity || 0) * (p.price || 0),
+      (sum, p) => sum + (p.quantity || 0) * (p.cost_price || 0),
       0
     );
     const availableCount = products.filter(
       (p) => p.status === "Available"
     ).length;
-    const unavailableCount = products.filter(
-      (p) => p.status === "Unavailable"
-    ).length;
 
+    // --- TABLE DEFINITION ---
     const tableColumn = [
       "ID",
       "Name",
       "Category",
-      "Quantity",
-      "Price",
+      "Supplier",
+      "Stock",
+      "Cost Price",
       "Expiry",
-      "Status",
     ];
     const tableRows = products.map((p) => [
       p.medicineId || "N/A",
       p.name || "N/A",
       p.category || "N/A",
+      p.supplier || "N/A",
       p.quantity,
-      `PHP ${p.price ? p.price.toFixed(2) : "0.00"}`,
+      `${currencyPrefix}${p.cost_price ? p.cost_price.toFixed(2) : "0.00"}`,
       p.expireDate || "N/A",
-      p.status || "N/A",
     ]);
 
-    const exportDateTime = new Date().toLocaleString("en-US", {
-      timeZone: "Asia/Manila",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    // --- REUSABLE HEADER & FOOTER LOGIC ---
+    const addHeader = () => {
+      doc.addImage(logoBase64, "PNG", 15, 12, 18, 18);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(33, 37, 41);
+      doc.text(brandingData.name, 38, 22);
 
-    const drawHeaderAndSummary = () => {
-      doc.addImage(logoBase64, "PNG", 14, 10, 20, 20);
-      doc.setFontSize(18);
-      doc.setTextColor(40);
-      doc.setFont("helvetica", "bold");
-      doc.text(brandingData.name, 38, 18);
-      doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(100);
-      doc.text("Malolos, Central Luzon, Philippines", 38, 24);
-      doc.text("Phone: (123) 456-7890 | Email: contact@medcure.ph", 38, 28);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(40);
-      doc.text("Product Inventory Report", pageWidth - 14, 20, {
+      doc.setFontSize(10);
+      doc.setTextColor(108, 117, 125);
+      doc.text("Product Inventory Report", pageWidth - 15, 20, {
         align: "right",
       });
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100);
-      doc.text(`Exported on: ${exportDateTime}`, pageWidth - 14, 25, {
+      doc.text(`Generated on: ${reportDate}`, pageWidth - 15, 26, {
         align: "right",
-      });
-      doc.setDrawColor(224, 224, 224);
-      doc.line(14, 38, pageWidth - 14, 38);
-      autoTable(doc, {
-        body: [
-          ["Total Products:", totalProducts],
-          ["Total Quantity:", totalQuantity],
-          ["Estimated Total Value:", `PHP ${totalValue.toFixed(2)}`],
-          [
-            "Available / Unavailable:",
-            `${availableCount} / ${unavailableCount}`,
-          ],
-        ],
-        startY: 42,
-        theme: "plain",
-        styles: { fontSize: 10, cellPadding: 1 },
-        columnStyles: { 0: { fontStyle: "bold" } },
       });
     };
 
-    drawHeaderAndSummary();
-    const summaryFinalY = doc.lastAutoTable.finalY;
+    const addFooter = (pageNumber, pageCount) => {
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${pageNumber} of ${pageCount}`,
+        pageWidth / 2,
+        pageHeight - 10,
+        { align: "center" }
+      );
+    };
 
+    // --- PDF GENERATION ---
+    addHeader();
+
+    // --- SUMMARY SECTION ---
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Inventory Summary", 15, 45);
+    doc.setDrawColor(222, 226, 230);
+    doc.line(15, 47, pageWidth - 15, 47);
+
+    autoTable(doc, {
+      body: [
+        ["Total Unique Products:", totalProducts.toString()],
+        ["Total Units in Stock:", totalQuantity.toString()],
+        ["Total Inventory Cost:", `${currencyPrefix}${totalValue.toFixed(2)}`],
+        ["Products Available:", availableCount.toString()],
+      ],
+      startY: 50,
+      theme: "plain",
+      styles: { fontSize: 10, cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: "bold", textColor: 49, cellWidth: 60 },
+        1: { textColor: 85 },
+      },
+    });
+
+    // --- MAIN TABLE ---
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: summaryFinalY + 5,
-      theme: "grid",
-      headStyles: { fillColor: [22, 160, 133], textColor: 255 },
-      styles: { fontSize: 8, cellPadding: 2 },
-      // --- THIS IS THE FIX ---
-      // Adjusted column widths to prevent overflow.
+      startY: doc.lastAutoTable.finalY + 10,
+      theme: "striped",
+      headStyles: {
+        fillColor: [40, 52, 71],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      styles: { fontSize: 8.5, cellPadding: 2.5 },
       columnStyles: {
-        0: { cellWidth: 20 }, // ID
-        1: { cellWidth: 40 }, // Name
-        2: { cellWidth: 28 }, // Category
-        3: { cellWidth: 15, halign: "center" }, // Quantity
-        4: { cellWidth: 20, halign: "right" }, // Price
-        5: { cellWidth: 22 }, // Expiry
-        6: { cellWidth: 20 }, // Status
+        4: { halign: "center" },
+        5: { halign: "right" },
       },
-      margin: { top: 40 },
       didDrawPage: (data) => {
+        // Only add header on subsequent pages, as page 1 is handled manually.
         if (data.pageNumber > 1) {
-          drawHeaderAndSummary();
+          addHeader();
         }
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        const footerText = `Page ${
-          data.pageNumber
-        } of ${doc.internal.getNumberOfPages()}`;
-        doc.text(footerText, pageWidth / 2, pageHeight - 10, {
-          align: "center",
-        });
       },
+      // Set top margin for the first page
+      margin: { top: 40 },
     });
+
+    // --- FINAL FOOTER ON ALL PAGES ---
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      addFooter(i, pageCount);
+    }
 
     doc.save(
       `${brandingData.name}_Product_Report_${new Date()

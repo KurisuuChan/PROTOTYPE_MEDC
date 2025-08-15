@@ -109,6 +109,23 @@ const AddProductModal = ({ isOpen, onClose, onProductAdded }) => {
                 </select>
               </div>
             </div>
+            <div className="mt-4">
+              <label
+                htmlFor="product-supplier"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Supplier
+              </label>
+              <input
+                id="product-supplier"
+                type="text"
+                name="supplier"
+                placeholder="e.g., PharmaCorp"
+                value={formData.supplier}
+                onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

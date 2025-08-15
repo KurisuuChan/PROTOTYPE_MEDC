@@ -87,9 +87,14 @@ const ViewProductModal = ({ isOpen, onClose, product }) => {
         <div className="overflow-y-auto px-8 pb-8 flex-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <DetailField label="Medicine Category" value={product.category} />
+            <DetailField label="Supplier" value={product.supplier} />
             <DetailField
               label="Base Price"
               value={formatPrice(product.price)}
+            />
+            <DetailField
+              label="Cost Price"
+              value={formatPrice(product.cost_price)}
             />
             <DetailField
               label="Current Stock"
@@ -194,11 +199,13 @@ ViewProductModal.propTypes = {
     name: PropTypes.string,
     category: PropTypes.string,
     price: PropTypes.number,
+    cost_price: PropTypes.number,
     quantity: PropTypes.number,
     status: PropTypes.string,
     expireDate: PropTypes.string,
     productType: PropTypes.string,
     description: PropTypes.string,
+    supplier: PropTypes.string,
     product_variants: PropTypes.arrayOf(
       PropTypes.shape({
         id: PropTypes.number,

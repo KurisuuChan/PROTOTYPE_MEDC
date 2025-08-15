@@ -61,6 +61,10 @@ const ProductTableRow = ({
         <div className="text-sm text-gray-500">{product.medicineId}</div>
       </td>
       <td className="px-6 py-4 text-sm text-gray-600">{product.category}</td>
+      {/* ADDED SUPPLIER CELL */}
+      <td className="px-6 py-4 text-sm text-gray-600">
+        {product.supplier || "N/A"}
+      </td>
       <td className="px-6 py-4 text-center text-sm font-medium">
         {product.quantity}
       </td>
